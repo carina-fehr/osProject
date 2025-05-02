@@ -19,7 +19,7 @@ void* malloc(size_t size) {
 
     }
 
-    if (size > 1000) {
+    if (size > 15000) { //make random genarated sizes 
         return NULL;
     }
 
