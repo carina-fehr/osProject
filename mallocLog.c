@@ -8,8 +8,8 @@ static void* (*real_malloc)(size_t)=NULL;
 static void mtrace_init(void)
 {
     real_malloc = dlsym(RTLD_NEXT, "malloc"); //calls real malloc
-    if (NULL == real_malloc) {
-        fprintf(stderr, "Error in `dlsym`: %s\n", dlerror()); //error if real malloc couldnt be called
+    if (NULL == real_malloc) { //error if real malloc couldnt be called
+        fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
     }
 }
 
