@@ -1,0 +1,9 @@
+#!/bin/bash
+
+nameOfFile=$1
+
+unset LD_PRELOAD
+
+gcc -shared -fPIC -o $nameOfFile.so $nameOfFile.c -ldl
+
+export LD_PRELOAD=./$nameOfFile.so
