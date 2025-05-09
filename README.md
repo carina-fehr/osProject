@@ -20,6 +20,7 @@ To run the combinedMRWOC.c file manually:
 - w3m google.com (should not work)
 - w3m youtube.com (should not work)
 - To check the log file for blocked connections: cat /tmp/blocked.log or blocked2.log for combinedRWOC.c
+
 To run with the bash script:
 - gcc -shared -fPIC -o combinedMRWOC.so combinedMRWOC.c -ldl
 - ./install_invisible_blocker.sh or with source and then either open a new terminal or run source ~/.bashrc
