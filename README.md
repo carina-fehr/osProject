@@ -9,7 +9,7 @@ Hijack seven different fuctions with LD_PRELOAD:
 - connect()
 
 To run the combinedMRWOC.c file manually:
-- gcc -shared -fPIC -o combinedMRWOC.so combinedRWOC.c -ldl
+- gcc -shared -fPIC -o combinedMRWOC.so combinedMRWOC.c -ldl
 - export LD_PRELOAD=./combinedMRWOC.so bash and then idontexist (should say "Finished execution: no errors")
 - hexchat (should not work)
 - DISABLE_WRITE_PRANK = 1 geary (should not work)
@@ -20,5 +20,7 @@ To run the combinedMRWOC.c file manually:
 - w3m google.com (should not work)
 - w3m youtube.com (should not work)
 - To check the log file for blocked connections: cat /tmp/blocked.log or blocked2.log for combinedRWOC.c
-- To run with the bash script: ./install_invisible_blocker.sh or with source and then either open a new terminal or run source ~/.bashrc
+To run with the bash script:
+- gcc -shared -fPIC -o combinedMRWOC.so combinedMRWOC.c -ldl
+- ./install_invisible_blocker.sh or with source and then either open a new terminal or run source ~/.bashrc
 
