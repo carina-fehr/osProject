@@ -214,7 +214,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         port = ntohs(addr_in6->sin6_port);
         inet_ntop(AF_INET6, &addr_in6->sin6_addr, ip, sizeof(ip));
     } else {
-        printf("[LD_PRELOAD] Unknown address family (%d)\n", addr->sa_family);
+        printf("[INTERNET_ACCESS_BLOCKED] Unknown address family (%d)\n", addr->sa_family);
         return real_connect(sockfd, addr, addrlen);
     }
 
@@ -230,8 +230,8 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
     if (should_block) {
         block_count++;
-        printf("[LD_PRELOAD] Blocking connection to %s:%d\n", ip, port);
-        printf("[LD_PRELOAD] Total blocked: %d\n", block_count);
+        printf("[INTERNET_ACCESS_BLOCKED] Blocking connection to %s:%d\n", ip, port);
+        printf("[INTERNET_ACCESS_BLOCKED] Total blocked: %d\n", block_count);
 
         FILE *logfile2 = fopen("/tmp/blocked2.log", "a");
         if (logfile2) {
@@ -243,8 +243,8 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         return -1;
     } else {
         block_count++;
-        printf("[LD_PRELOAD] Blocking connection to %s:%d (other connection)\n", ip, port);
-        printf("[LD_PRELOAD] Total blocked: %d\n", block_count);
+        printf("[INTERNET_ACCESS_BLOCKED] Blocking connection to %s:%d (other connection)\n", ip, port);
+        printf("[INTERNET_ACCESS_BLOCKED] Total blocked: %d\n", block_count);
 
         FILE *logfile = fopen("/tmp/blocked.log", "a");
         if (logfile) {
