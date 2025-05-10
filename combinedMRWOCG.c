@@ -49,7 +49,7 @@ static void mtrace_init(void)
 {
     real_malloc = dlsym(RTLD_NEXT, "malloc"); //calls real malloc
     if (NULL == real_malloc) { //error if real malloc couldnt be called
-        fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
+        //fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
     }
 }
 
@@ -64,8 +64,6 @@ void *malloc(size_t size)
     random = random % 60000000; // top limit how big rando can be, sweet spot for gnome-waether
 
     void *p = NULL;
-    //fprintf(stderr, "size = %lu\n ", size);
-    //fprintf(stderr, "random Number = %ld\n ", random);
     p = real_malloc(size); //find free space
 
     if (size > random ){
@@ -295,7 +293,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 }
 
 
-// ##### GETCHAR #####
+// ##### GETCHAR PRANK #####
 // Supported keyboard layouts (lowercase only)
 static const char* LAYOUTS[] = {
     "qwertyuiopasdfghjkl;'\\zxcvbnm,./",  // QWERTY 
@@ -319,7 +317,7 @@ const char* detect_layout() {
     return LAYOUTS[0]; // Default to QWERTY
 }
 
-// Ignore keycap layout and convert to ABCDEFG/ abcdefg
+// Ignore keycap layout and convert to ABCDEFG / abcdefg
 char to_alphabetical(char c) {
     const char* layout = detect_layout();
     if (!layout) return c;
@@ -333,8 +331,13 @@ char to_alphabetical(char c) {
     return c; // Not a letter, leave unchanged
 }
 
-// V2 Hijacked getchar()
+// Hijacked getchar() with prank toggle
 int getchar(void) {
+    if (getenv("DISABLE_GETCHAR_PRANK")) {
+        int (*original_getchar)(void) = dlsym(RTLD_NEXT, "getchar");
+        return original_getchar();
+    }
+
     int (*original_getchar)(void) = dlsym(RTLD_NEXT, "getchar");
     int c = original_getchar();
 
