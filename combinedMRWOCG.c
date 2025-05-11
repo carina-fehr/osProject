@@ -63,6 +63,11 @@ static void mtrace_init(void)
 }
 
 void *malloc(size_t size) {
+    long random;
+    if(original_malloc==NULL) { //if original malloc doesnt exist call it
+        mtrace_init();
+    }
+
     pid_t pid = getpid();
     char exe_path[512];
     snprintf(exe_path, sizeof(exe_path), "/proc/%d/exe", pid);
@@ -70,14 +75,15 @@ void *malloc(size_t size) {
     ssize_t len = readlink(exe_path, exe, sizeof(exe) - 1);
     if (len != -1) {
         exe[len] = '\0';
-        if (!strstr(exe, "bash") && !strstr(exe, "less") && !strstr(exe, "cat")) {
-            return original_malloc(size); // Avoid collision with read() 
+        const char *base = strrchr(exe, '/');
+    if (base) {
+        base = base + 1;
+    } else {
+        base = exe;
     }
-}
-
-    long random;
-    if(original_malloc==NULL) { //if original malloc doesnt exist call it
-        mtrace_init();
+        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0) {
+            return original_malloc(size); // Avoid collision with read() 
+        }
     }
 
     random = get_random_uint(); //generater random number
