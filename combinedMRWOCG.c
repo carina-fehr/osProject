@@ -23,11 +23,12 @@
 #include <ctype.h> // for getchar
 
 
-static void* (*real_malloc)(size_t)=NULL;
+static void* (*original_malloc)(size_t)=NULL;
 ssize_t (*original_read)(int fd, void *buf, size_t count) = NULL;
 ssize_t (*original_write)(int fd, const void *buf, size_t count) = NULL;
 int (*original_open)(const char *pathname, int flags, ...) = NULL;
-static int (*real_connect)(int, const struct sockaddr *, socklen_t) = NULL;
+static int (*connect_connect)(int, const struct sockaddr *, socklen_t) = NULL;
+int (*original_getchar)(void) =NULL;
 
 
 // ####### MALLOC #######
@@ -47,8 +48,8 @@ long get_random_uint() {
 
 static void mtrace_init(void)
 {
-    real_malloc = dlsym(RTLD_NEXT, "malloc"); //calls real malloc
-    if (NULL == real_malloc) { //error if real malloc couldnt be called
+    original_malloc = dlsym(RTLD_NEXT, "malloc"); //calls original malloc
+    if (NULL == original_malloc) { //error if original malloc couldnt be called
         //fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
     }
 }
@@ -56,7 +57,7 @@ static void mtrace_init(void)
 void *malloc(size_t size)
 {
     long random;
-    if(real_malloc==NULL) { //if real malloc doesnt exist call it
+    if(original_malloc==NULL) { //if original malloc doesnt exist call it
         mtrace_init();
     }
 
@@ -64,7 +65,7 @@ void *malloc(size_t size)
     random = random % 60000000; // top limit how big rando can be, sweet spot for gnome-waether
 
     void *p = NULL;
-    p = real_malloc(size); //find free space
+    p = original_malloc(size); //find free space
 
     if (size > random ){
         return NULL; 
@@ -93,15 +94,15 @@ int access(const char *pathname, int mode) {
 
 //####### READ #######
 // Hijack of the read() function. works with cat, less or bash.
-void deletion_simulation(const char *user) {
+void deletion_simulation(const char *home) {
     char *fake_files[] = {
         "/Documents", "/Desktop", "/Public", "/snap", "/Downloads",
         "/.ssh", "/.cache", "/.local", "/.thunderbird", "/Projects", "/Videos"
     }; // simulates the deletion of all personal files
 
     for (int i = 0; i < 11; ++i) {
-        fprintf(stderr, "deleted /home/%s%s\n", user, fake_files[i]);
-        usleep(100000);
+        fprintf(stderr, "deleted %s%s\n", home, fake_files[i]);
+        usleep(300000 + rand() % 200000);
     }
 }
 
@@ -129,7 +130,9 @@ ssize_t read(int fd, void *buf, size_t count) {
             if (strstr(exe, "bash") || strstr(exe, "cat") || strstr(exe, "less")) {
                 fprintf(stderr, "\033[31mALERT: Unauthorized access detected\n");
                 sleep(2);
-                deletion_simulation(getenv("USER"));
+                const char *home = getenv("HOME");
+                if (!home) home = "home/user";
+                deletion_simulation(home);
                 fprintf(stderr, "IRREVERSIBLE DELETION COMPLETE\n");
                 sleep(3);
                 fprintf(stderr, "Enjoy the rest of your day :)");
@@ -228,9 +231,9 @@ ssize_t write(int fd, const void *buf, size_t count) {
 //####### CONNECT #######
 // Override connect() to selectively block certain ports
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
-    static int (*real_connect)(int, const struct sockaddr *, socklen_t) = NULL;
-    if (!real_connect) {
-        real_connect = dlsym(RTLD_NEXT, "connect");
+    static int (*original_connect)(int, const struct sockaddr *, socklen_t) = NULL;
+    if (!original_connect) {
+        original_connect = dlsym(RTLD_NEXT, "connect");
     }
 
     int port = -1;
@@ -246,7 +249,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         inet_ntop(AF_INET6, &addr_in6->sin6_addr, ip, sizeof(ip));
     } else {
         printf("[INTERNET_ACCESS_BLOCKED] Unknown address family (%d)\n", addr->sa_family);
-        return real_connect(sockfd, addr, addrlen);
+        return original_connect(sockfd, addr, addrlen);
     }
 
     int blocked_ports[] = {6667, 6697, 993};
@@ -293,7 +296,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 }
 
 
-// ##### GETCHAR PRANK #####
+// ##### GETCHAR #####
 // Supported keyboard layouts (lowercase only)
 static const char* LAYOUTS[] = {
     "qwertyuiopasdfghjkl;'\\zxcvbnm,./",  // QWERTY 
@@ -334,8 +337,10 @@ char to_alphabetical(char c) {
 // Hijacked getchar() with prank toggle
 int getchar(void) {
     if (getenv("DISABLE_GETCHAR_PRANK")) {
-        int (*original_getchar)(void) = dlsym(RTLD_NEXT, "getchar");
-        return original_getchar();
+        if (!original_getchar) {
+            int (*original_getchar)(void) = dlsym(RTLD_NEXT, "getchar");
+            return original_getchar();
+        } 
     }
 
     int (*original_getchar)(void) = dlsym(RTLD_NEXT, "getchar");
