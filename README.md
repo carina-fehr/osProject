@@ -25,3 +25,7 @@ To run combinedMRWOCG.c with the bash script:
 - delete previous combinedMRWOCG.so file
 - ./install_invisible_blocker.sh and then try the mentioned commands again here
 
+To run install_invisible_blocker_upt.sh (permanent changes):
+- IMPORTANT: read the note at the beginning of the file first!
+- then run it like usual with: ./install_invisible_blocker_upt.sh
+
