@@ -17,7 +17,9 @@ To run the combinedMRWOC.c file manually:
 - `liferea` (should not work)
 - `gnome-weather` (should not work)
 - `bash` or `cat file.txt` (should show fake deletion in red writing)
-- `touch secrets.txt` or `head openThis.txt` (should show hacked text)
+- `touch openThis.txt` or `head openThis.txt` (should show hacked text)
+- `nano secrets.txt` (creates new file, writes in this)
+- `nano preloadLib.c` (permission denied) 
 - `w3m google.com` (should not work)
 - `w3m youtube.com` (should not work)
 - To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for combinedRWOC.c
