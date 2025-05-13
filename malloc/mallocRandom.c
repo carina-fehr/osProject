@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
-
+// This library return adresses of allocated data but randomly return NULL
+// if the size being allocated exeds RANDOM 
+// The pool of numbers for a random generated number is set to 60000000
 #include <math.h>
 #include <time.h>
 #include <stdio.h>

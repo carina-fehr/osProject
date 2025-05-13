@@ -1,6 +1,7 @@
 #!/bin/bash
-
+# ussage . ./CompileandExport NameOfFileToExecute
 nameOfFile=$1
+nameOfFile="${nameOfFile%%.*}"
 
 unset LD_PRELOAD
 
