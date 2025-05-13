@@ -1,11 +1,19 @@
 #!/bin/bash
 
-#IMPORTANT NOTE: READ ME BEFORE EXECUTING!!!: I added the injection of the export LD_PRELOAD
-# command into the bashrc script which makes the hijacking permanent for ALL terminals opened after
-# execution. This means, to be able to revert it safely you need to type "nano ~/.bashrc" and scroll
-# down to the very bottom to delete the last two lines added by this script with the marker
-# provided below. Also for singular terminals you can use "unset LD_PRELOAD" BUT this does NOT deactive
-# the hijacking for future terminals. Just delete the lines from bashrc to be safe! 
+# IMPORTANT NOTE: READ ME BEFORE EXECUTING!!!: 
+# This Scrip makes the hijack work for every new opened Terminal after execution !!
+# 
+# How it works: 
+#
+#   export LD_PRELOAD in ~/bash.rc on the last line
+#
+# How to undo it:
+# 
+# remove LD_PRELOAD in ~/bash.rc on the last line
+# "nano ~/bash.rc" cnhelp you
+#
+# "unset LD_PRELOAD" still works but only for the active terminal. 
+# In the a new terminal it will be set again.
 
 # Compile the .so from the .c file
 gcc -shared -fPIC -o combinedMRWOCG.so combinedMRWOCG.c -ldl

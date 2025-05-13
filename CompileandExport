@@ -1,5 +1,9 @@
 #!/bin/bash
-# ussage . ./CompileandExport NameOfFileToExecute
+
+#This script helps you run and execute the neede Library 
+#
+# ussage 
+# . ./CompileandExport NameOfFileToExecute
 nameOfFile=$1
 nameOfFile="${nameOfFile%%.*}"
 

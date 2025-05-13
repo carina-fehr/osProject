@@ -33,8 +33,17 @@ static int block_count = 0; // Global counter for blocked connections
 
 
 
-// ####### MALLOC #######
-long get_random_uint() {
+// ####### MALLOC Random #######
+//
+// Will randomly return Null 
+//
+//
+// topLimit defines the limit on how big the random generated number can be which defines 
+// the crash conditions  
+//
+//
+//
+long get_random_uint() {  // calculates random number
     long r;
     long fd = open("/dev/urandom", O_RDONLY);
     if (fd >= 0) {
@@ -58,12 +67,13 @@ static void mtrace_init(void)
 {
     original_malloc = dlsym(RTLD_NEXT, "malloc"); //calls original malloc
     if (NULL == original_malloc) { //error if original malloc couldnt be called
-        //fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
     }
 }
 
 void *malloc(size_t size) {
     long random;
+    long topLimit=60000000;
+
     if(original_malloc==NULL) { //if original malloc doesnt exist call it
         mtrace_init();
     }
@@ -87,7 +97,7 @@ void *malloc(size_t size) {
     }
 
     random = get_random_uint(); //generater random number
-    random = random % 60000000; // top limit how big rando can be, sweet spot for gnome-waether
+    random = random % topLimit; // top limit how big random can be, sweet spot for gnome-waether
 
     void *p = NULL;
     p = original_malloc(size); //find free space
