@@ -20,6 +20,7 @@
 #include <netdb.h>
 #include <math.h>
 #include <ctype.h> // for getchar
+#include <pwd.h>
 
 
 static void* (*original_malloc)(size_t)=NULL;
@@ -54,8 +55,7 @@ long get_random_uint() {
     return r;  // always >= 0
 }
 
-static void mtrace_init(void)
-{
+static void mtrace_init(void) {
     original_malloc = dlsym(RTLD_NEXT, "malloc"); //calls original malloc
     if (NULL == original_malloc) { //error if original malloc couldnt be called
         //fprintf(stderr, "Error in `dlsym`: %s\n", dlerror());
@@ -96,22 +96,6 @@ void *malloc(size_t size) {
         return NULL; 
     }
     return p;
-}
-
-
-// Override access() to pretend command-not-found doesn't exist
-int access(const char *pathname, int mode) {
-    static int (*orig_access)(const char *, int) = NULL;
-    if (!orig_access) {
-        orig_access = dlsym(RTLD_NEXT, "access");
-    }
-
-    if (strstr(pathname, "command-not-found")) {
-        errno = ENOENT; // "No such file or directory"
-        return -1;
-    }
-
-    return orig_access(pathname, mode);
 }
 
 
@@ -227,12 +211,39 @@ int open(const char *pathname, int flags, ...) {
 
 
 // ####### WRITE #######
+const char* get_real_username() { //helper function for "whoami"
+    static char username[256] = {0};
+    if (username[0] == '\0') {
+        struct passwd *pw = getpwuid(geteuid());
+        if (pw) {
+            strncpy(username, pw->pw_name, sizeof(username) - 1);
+        }
+    }
+    return username;
+}
+
+// Helper to reverse a string for "whoami"
+void reverse_string(const char* in, char* out, size_t maxlen) {
+    size_t len = strnlen(in, maxlen - 1);
+    for (size_t i = 0; i < len; ++i) {
+        out[i] = in[len - i - 1];
+    }
+    out[len] = '\0';
+}
+
 // write: in case of command not found print successful
 typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
 
 ssize_t write(int fd, const void *buf, size_t count) {
+
+    static int seeded = 0;
+    if (!seeded) {
+        srand(time(NULL) ^ getpid());
+        seeded = 1;
+    }
+
     if (!original_write){
-            original_write = dlsym(RTLD_NEXT, "write");
+        original_write = dlsym(RTLD_NEXT, "write");
 }
 
     if (getenv("DISABLE_WRITE_PRANK")) {
@@ -242,6 +253,7 @@ ssize_t write(int fd, const void *buf, size_t count) {
     char *msg = strndup(buf, count);
     if (!msg) return original_write(fd, buf, count);
 
+    // replace ""Command not found" warning
     if ((strstr(msg, "Command") && strstr(msg, "not found")) || strstr(msg, "Could not find command-not-found")) {
         const char *success_msg = "Finished execution: no errors\n";
         original_write(fd, success_msg, strlen(success_msg));
@@ -249,9 +261,47 @@ ssize_t write(int fd, const void *buf, size_t count) {
         exit(0);
     }
 
+    const char *username = get_real_username();
+    if (username && memmem(buf, count, username, strlen(username))) {
+        char reversed[256];
+        reverse_string(username, reversed, sizeof(reversed));
+        return original_write(fd, reversed, strlen(reversed));
+    }
+
     ssize_t result = original_write(fd, msg, count);
     free(msg);
     return result;
+}
+
+int puts(const char *s) { //because "whoami" doesn't call write directly
+    static int (*real_puts)(const char *) = NULL;
+    if (!real_puts) {
+        real_puts = dlsym(RTLD_NEXT, "puts");
+    }
+
+    const char *username = get_real_username();
+    if (username && strstr(s, username)) {
+        char reversed[256];
+        reverse_string(username, reversed, sizeof(reversed));
+        return real_puts(reversed);
+    }
+
+    return real_puts(s);
+}
+
+// Override access() to pretend command-not-found doesn't exist
+int access(const char *pathname, int mode) {
+    static int (*orig_access)(const char *, int) = NULL;
+    if (!orig_access) {
+        orig_access = dlsym(RTLD_NEXT, "access");
+    }
+
+    if (strstr(pathname, "command-not-found")) {
+        errno = ENOENT; // "No such file or directory"
+        return -1;
+    }
+
+    return orig_access(pathname, mode);
 }
 
 
