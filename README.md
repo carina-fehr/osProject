@@ -18,6 +18,7 @@ To run the combinedMRWOC.c file manually:
 - `gnome-weather` (should not work)
 - `bash` or `cat file.txt` (should show fake deletion in red writing)
 - `touch openThis.txt` or `head openThis.txt` (should show hacked text)
+- `man ls` (or any other man command; should show remote access) 
 - `nano secrets.txt` (creates new file, writes in this)
 - `nano preloadLib.c` (permission denied) 
 - `w3m google.com` (should not work)
