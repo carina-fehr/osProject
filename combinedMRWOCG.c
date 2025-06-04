@@ -92,7 +92,7 @@ void *malloc(size_t size) {
     } else {
         base = exe;
     }
-        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0 || strcmp(base, "cat") ==0) {
+        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0 || strcmp(base, "cat") == 0 || strcmp(base, "nano") == 0) || strcmp(base, "head") == 0 || strcmp(base, "man") == 0) {
             return original_malloc(size); // Avoid collision with read() 
         }
     }
