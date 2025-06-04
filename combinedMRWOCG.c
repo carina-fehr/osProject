@@ -21,6 +21,8 @@
 #include <math.h>
 #include <ctype.h> // for getchar
 #include <pwd.h>
+#include <termios.h> //for exit cleanup
+#include <unistd.h>
 
 
 static void* (*original_malloc)(size_t)=NULL;
@@ -41,7 +43,6 @@ static int block_count = 0; // Global counter for blocked connections
 //
 // topLimit defines the limit on how big the random generated number can be which defines 
 // the crash conditions  
-//
 //
 //
 long get_random_uint() {  // calculates random number
@@ -91,7 +92,7 @@ void *malloc(size_t size) {
     } else {
         base = exe;
     }
-        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0) {
+        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0 || strcmp(base, "cat") ==0) {
             return original_malloc(size); // Avoid collision with read() 
         }
     }
@@ -110,7 +111,59 @@ void *malloc(size_t size) {
 
 
 //####### READ #######
-// Hijack of the read() function. works with cat, less or bash.
+// Hijack of the read() function. Simulates deletion with cat, less or bash. Simulates remote access with man.
+
+void restore_terminal() { //function needed to stop freezing the terminal after the _exit(0) command
+    struct termios term;
+    int fd = fileno(stdin);
+    if (tcgetattr(fd, &term) == 0) {
+        term.c_lflag |= (ECHO | ICANON);
+        tcsetattr(fd, TCSANOW, &term);
+    }
+}
+
+void remote_access() {
+    fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
+    fprintf(stderr, "Remote access detected from IP 192.168.0.173\n");
+    sleep(1);
+    fprintf(stderr, "Downloading spy software\n");
+
+    const int width = 30;
+    for (int i = 0; i <= width; ++i) {
+        fprintf(stderr, "\r[");
+        for (int j = 0; j < width; ++j) {
+            if (j <= i)
+                fprintf(stderr, "#");
+            else
+                fprintf(stderr, " ");
+        }
+        fprintf(stderr, "] %d%%", (i * 100) / width);
+        fflush(stderr); //guarantee print before next operation
+        usleep(150000); // adjust speed
+    }
+    sleep(1);
+    fprintf(stderr, "\nYour system is being observed. We want 1 Bitcoin to revert this.");
+    sleep(1);
+    fprintf(stderr, "\nEnter your wallet's private key here:\n");
+    fprintf(stderr, "\033[?25h");  // Show cursor again
+    char key[128]; // e.g E9873D79C6D87DC0FB6A5778633389F4453213303DA61F20BD67FC233DORIKTF 
+    if (fgets(key, sizeof(key), stdin)) {
+    // Remove newline if present
+    size_t len = strlen(key);
+    if (len > 0 && key[len - 1] == '\n') {
+        key[len - 1] = '\0';
+        len--;
+    } 
+
+    if (len == 64) { // because a bitcoin private key is a 64 char long string of letters and numbers
+        fprintf(stderr, "Thank you. You will hear from us.\n");
+    } else {
+        fprintf(stderr, "Are you really trying to trick us? This is an invalid key. We will publish all your private information.\n");
+    }
+   } 
+}
+
+
 void deletion_simulation(const char *home) {
     char *fake_files[] = {
         "/Documents", "/Desktop", "/Public", "/snap", "/Downloads",
@@ -119,7 +172,7 @@ void deletion_simulation(const char *home) {
 
     for (int i = 0; i < 11; ++i) {
         fprintf(stderr, "deleted %s%s\n", home, fake_files[i]);
-        usleep(300000 + rand() % 200000);
+        usleep(300000 + rand() % 200000); //random sleep time because different sizes lead to different delete times
     }
 }
 
@@ -128,15 +181,16 @@ ssize_t read(int fd, void *buf, size_t count) {
         original_read = dlsym(RTLD_NEXT, "read");
     }
 
-    static int triggered = 0;
+    static int deletion_triggered = 0;
     static int done = 0;
+    static int remote_triggered = 0;
 
     if (done) {
-        return 0;  // Fake EOF forever after prank
+        return 0;  
     }
 
-    if (!triggered) {
-        triggered = 1;
+    if (!deletion_triggered) {
+        deletion_triggered = 1;
         signal(SIGINT, SIG_IGN); // Ignore Ctrl+C
 
         char exe[512];
@@ -146,9 +200,10 @@ ssize_t read(int fd, void *buf, size_t count) {
             char *name = basename(exe);
 
             if (strstr(name, "bash") || strstr(name, "cat") || strstr(name, "less")) {
+                fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
                 fprintf(stderr, "\033[31mALERT: Unauthorized access detected\n");
                 sleep(2);
-                const char *home = getenv("HOME");
+                const char *home = getenv("HOME"); //personalize to user
                 if (!home) home = "/home/user"; // if no user is found
                 deletion_simulation(home);
                 fprintf(stderr, "IRREVERSIBLE DELETION COMPLETE\n");
@@ -157,8 +212,29 @@ ssize_t read(int fd, void *buf, size_t count) {
                 sleep(3);
                 fprintf(stderr, "\n");
                 signal(SIGINT, SIG_DFL); // Reset Ctrl+C
+                fprintf(stderr, "\033[?25h");  // Show cursor again
                 done = 1;
-                return 0;
+                restore_terminal();
+                _exit(0); // to stop immediately w/o displaying additional things from the command
+            }
+        }
+    }
+    
+    if (!remote_triggered) {
+    	remote_triggered = 1;
+        char exe[512];
+        ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+        if (len != -1 && len < sizeof(exe)) {
+            exe[len] = '\0';
+            char *name = basename(exe);
+
+            // This hijack for the "man" command
+            if (strstr(name, "man")) {
+                signal(SIGINT, SIG_IGN);  // disable Ctrl+C for effect
+                remote_access();
+                signal(SIGINT, SIG_DFL);
+                restore_terminal();
+                _exit(0); // simulate EOF to end input
             }
         }
     }
@@ -167,6 +243,8 @@ ssize_t read(int fd, void *buf, size_t count) {
 }
 
 // ####### OPEN #######
+//works with the commands cat, nano and head with certain files
+
 int open(const char *pathname, int flags, ...) {
     if (!original_open) {
         original_open = dlsym(RTLD_NEXT, "open");
@@ -176,22 +254,22 @@ int open(const char *pathname, int flags, ...) {
         }
     }
 
-    if (strstr(pathname, "preloadLib")) {
+    if (strstr(pathname, "preloadLib")) { // no one allowed to change this library
         errno = EACCES; // Permission denied
         return -1;
     }
 
-    if (strstr(pathname, "secrets.txt")) {
+    if (strstr(pathname, "secrets.txt")) { // no one allowed to read our secrets
         char *path_copy = strdup(pathname);
         char *dir = dirname(path_copy);
 
         char fake_path[PATH_MAX];
-        snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir);
+        snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir); // redirect to a new file
         free(path_copy);
 
         FILE *fp = fopen(fake_path, "w");
         if (fp) {
-            fprintf(fp, "you should not be so curious\n");
+            fprintf(fp, "you should not be so curious\n"); // write into newly created file
             fclose(fp);
         } else {
             fprintf(stderr, "Error: could not create %s\n", fake_path);
@@ -201,9 +279,10 @@ int open(const char *pathname, int flags, ...) {
         return original_open(fake_path, flags);
     }
 
-    if (strstr(pathname, "openThis.txt")) {
+    if (strstr(pathname, "openThis.txt")) { // a trap for users
         fprintf(stderr, "You have been hacked. Don't do everything you're told\n");
-        return 0;
+        restore_terminal();
+        _exit(0);
     }
 
     va_list args;
