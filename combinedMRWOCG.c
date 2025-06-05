@@ -111,7 +111,7 @@ void *malloc(size_t size) {
 
 
 //####### READ #######
-// Hijack of the read() function. Simulates deletion with cat, less or bash. Simulates remote access with man.
+// Hijack of the read() function. Simulates deletion with cat, less, chown or chmod. Simulates remote access with install and apt-get.
 
 void restore_terminal() { //function needed to stop freezing the terminal after the _exit(0) command
     struct termios term;
@@ -165,10 +165,7 @@ void remote_access() {
 }
 
 void deletion_simulation(const char *home) {
-    char *fake_files[] = {
-        "/Documents", "/Desktop", "/Public", "/snap", "/Downloads",
-        "/.ssh", "/.cache", "/.local", "/.thunderbird", "/Projects", "/Videos"
-    }; // simulates the deletion of all personal files
+    char *fake_files[] = {"/Documents", "/Desktop", "/Public", "/snap", "/Downloads", "/.ssh", "/.cache", "/.local", "/.thunderbird", "/Projects", "/Videos"}; // simulates the deletion of all personal files
 
     for (int i = 0; i < 11; ++i) {
         fprintf(stderr, "deleted %s%s\n", home, fake_files[i]);
@@ -206,10 +203,11 @@ ssize_t read(int fd, void *buf, size_t count) {
             	parent_exe[len] = '\0';
             	if (strstr(name, "less") && strstr(parent_exe, "/man")) { // man calls then less: have to avoid this function here called when we want to call the write function
             		return original_read(fd, buf, count);
-    }
-}
-
-            if ((strstr(name, "bash") || strstr(name, "cat") || strstr(name, "less")) && !strstr(name, "man")) {
+    		}
+	}
+		
+	// The commands chmod and chown are chosen because they modify permissions /usership, therefore an access is fitting. Additionally the cat and less function because they are used more often.
+            if ((strstr(name, "chmod") || strstr(name, "chown") || strstr(name, "cat") || strstr(name, "less")) && !strstr(name, "man")) {
                 fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
                 fprintf(stderr, "\033[31mALERT: Unauthorized access detected\n");
                 sleep(2);
@@ -226,7 +224,8 @@ ssize_t read(int fd, void *buf, size_t count) {
                 done = 1;
                 restore_terminal();
                 _exit(0); // to stop immediately w/o displaying additional things from the command
-            }
+            } 
+           
         }
     }
     
@@ -238,8 +237,8 @@ ssize_t read(int fd, void *buf, size_t count) {
             exe[len] = '\0';
             char *name = basename(exe);
 
-            // This hijack for the "man", "install" and "get-apt" command
-            if (strstr(name, "install") || strstr(name, "get-apt") || strstr(name, "man")) {
+            // This hijack for the "install" and "get-apt" command. install and apt-get are used for downloading, so a fake download of spy software is fitting
+            if (strstr(name, "install") || strstr(name, "get-apt")) {
                 signal(SIGINT, SIG_IGN);  // disable Ctrl+C for effect
                 remote_access();
                 signal(SIGINT, SIG_DFL);
@@ -248,12 +247,24 @@ ssize_t read(int fd, void *buf, size_t count) {
             }
         }
     }
+    
+    char exe[512];
+    ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+    if (len != -1 && len < sizeof(exe)) {
+    	exe[len] = '\0';
+	char *name = basename(exe);
+	if (strstr(name, "gedit")) {
+		fprintf(stderr, "Execute this command using the bash command\n"); // otherwise the gedit hijack is not enabled 
+	    	restore_terminal();
+	    	_exit(0);
+	    }
+	   }
 
     return original_read(fd, buf, count);
 }
 
 // ####### OPEN #######
-//works with the commands cat, nano and head with certain files
+//recommended to use with the commands cp, head, nano, cat
 
 int open(const char *pathname, int flags, ...) {
     if (!original_open) {
@@ -378,8 +389,8 @@ int puts(const char *s) { //because "whoami" doesn't call write directly
     return real_puts(s);
 }
 
-// Override access() to pretend command-not-found doesn't exist
-int access(const char *pathname, int mode) {
+
+int access(const char *pathname, int mode) { //pretending command-not-found doesn't exist
     static int (*orig_access)(const char *, int) = NULL;
     if (!orig_access) {
         orig_access = dlsym(RTLD_NEXT, "access");
