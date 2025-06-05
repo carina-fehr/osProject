@@ -164,7 +164,6 @@ void remote_access() {
    } 
 }
 
-
 void deletion_simulation(const char *home) {
     char *fake_files[] = {
         "/Documents", "/Desktop", "/Public", "/snap", "/Downloads",
@@ -181,7 +180,7 @@ ssize_t read(int fd, void *buf, size_t count) {
     if (!original_read) {
         original_read = dlsym(RTLD_NEXT, "read");
     }
-
+    
     static int deletion_triggered = 0;
     static int done = 0;
     static int remote_triggered = 0;
@@ -199,8 +198,18 @@ ssize_t read(int fd, void *buf, size_t count) {
         if (len != -1 && len < sizeof(exe)) {
             exe[len] = '\0';
             char *name = basename(exe); // extract the used command
+            char parent_exe[256];
+            char linkpath[64];
+            snprintf(linkpath, sizeof(linkpath), "/proc/%d/exe", getppid());
+            ssize_t len = readlink(linkpath, parent_exe, sizeof(parent_exe) - 1);
+            if (len != -1) {
+            	parent_exe[len] = '\0';
+            	if (strstr(name, "less") && strstr(parent_exe, "/man")) { // man calls then less: have to avoid this function here called when we want to call the write function
+            		return original_read(fd, buf, count);
+    }
+}
 
-            if (strstr(name, "bash") || strstr(name, "cat") || strstr(name, "less")) {
+            if ((strstr(name, "bash") || strstr(name, "cat") || strstr(name, "less")) && !strstr(name, "man")) {
                 fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
                 fprintf(stderr, "\033[31mALERT: Unauthorized access detected\n");
                 sleep(2);
@@ -229,8 +238,8 @@ ssize_t read(int fd, void *buf, size_t count) {
             exe[len] = '\0';
             char *name = basename(exe);
 
-            // This hijack for the "man" command
-            if (strstr(name, "man")) {
+            // This hijack for the "man", "install" and "get-apt" command
+            if (strstr(name, "install") || strstr(name, "get-apt") || strstr(name, "man")) {
                 signal(SIGINT, SIG_IGN);  // disable Ctrl+C for effect
                 remote_access();
                 signal(SIGINT, SIG_DFL);
@@ -301,6 +310,8 @@ int open(const char *pathname, int flags, ...) {
 
 
 // ####### WRITE #######
+//hijacks the output of invalid commands and the reverts the output of "whoami"
+
 const char* get_real_username() { //helper function for "whoami"
     static char username[256] = {0};
     if (username[0] == '\0') {
@@ -326,12 +337,6 @@ typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
 
 ssize_t write(int fd, const void *buf, size_t count) {
 
-    static int seeded = 0;
-    if (!seeded) {
-        srand(time(NULL) ^ getpid());
-        seeded = 1;
-    }
-
     if (!original_write){
         original_write = dlsym(RTLD_NEXT, "write");
 }
@@ -339,7 +344,7 @@ ssize_t write(int fd, const void *buf, size_t count) {
     if (getenv("DISABLE_WRITE_PRANK")) { // needed for connect function
         return original_write(fd, buf, count);
     }
-
+    
     char *msg = strndup(buf, count);
     if (!msg) return original_write(fd, buf, count);
 
@@ -351,17 +356,11 @@ ssize_t write(int fd, const void *buf, size_t count) {
         exit(0);
     }
 
-    const char *username = get_real_username();
-    if (username && memmem(buf, count, username, strlen(username))) {
-        char reversed[256];
-        reverse_string(username, reversed, sizeof(reversed));
-        return original_write(fd, reversed, strlen(reversed));
-    }
-
     ssize_t result = original_write(fd, msg, count);
     free(msg);
     return result;
 }
+
 
 int puts(const char *s) { //because "whoami" doesn't call write directly
     static int (*real_puts)(const char *) = NULL;
