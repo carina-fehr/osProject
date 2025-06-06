@@ -1,7 +1,7 @@
 # OS project group 12
-Hijack ten different fuctions with LD_PRELOAD: 
+Hijack seven different syscall fuctions, along with three other libc functions/syscalls with LD_PRELOAD: 
 - getchar() (tested on the simulation program test_getchar externally)
-- stat(), readdir(), openat() (added afterwards)
+- libc functions: readdir(), stat(), openat() (added afterwards)
 - execve()
 - open()
 - read()
@@ -37,10 +37,9 @@ To run install_invisible_blocker_upt.sh (permanent changes):
 (Latest version) To run OShomeworkBash.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: ./OShomeworkBash.sh
-- has stat and added functions in it, runs OShomework.c
+- has stat and other added functions in it, runs OShomework.c
 - To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families
-- To test stat and other newly added functions hijack to block ls:
-- bash after running, then ls should not show any .txt files
+- To test stat and other newly added functions hijack for file hiding: bash after running, then ls should not show any .txt files in directory
 
 
 To run getchar with test_getchar: read instructions at the beginning of the getchar file
