@@ -1,6 +1,7 @@
 # OS project group 12
 Hijack seven different fuctions with LD_PRELOAD: 
-- getchar()
+- getchar() (tested on the simulation test_getchar externally)
+- stat(), readdir(), openat() (added afterwards)
 - execve()
 - open()
 - read()
@@ -32,4 +33,14 @@ To run combinedMRWOCG.c with the bash script:
 To run install_invisible_blocker_upt.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: `./install_invisible_blocker_upt.sh`
+
+To run OShomeworkBash.sh (permanent changes):
+- IMPORTANT: read the note at the beginning of the file first!
+- then run it like usual with: `./OShomeworkBash.sh
+- has stat and added functions in it, runs OShomework.c
+- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families
+
+To run getchar with test_getchar: read instructions at the beginning of the getchar file
+
+
 
