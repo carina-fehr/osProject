@@ -39,6 +39,9 @@ To run install_invisible_blocker_upt.sh (permanent changes):
 - then run it like usual with: ./OShomeworkBash.sh
 - has stat and added functions in it, runs OShomework.c
 - To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families
+- To test stat and other newly added functions hijack to block ls:
+- bash after running, then ls should not show any .txt files
+
 
 To run getchar with test_getchar: read instructions at the beginning of the getchar file
 
