@@ -1,6 +1,6 @@
 # OS project group 12
-Hijack seven different fuctions with LD_PRELOAD: 
-- getchar() (tested on the simulation test_getchar externally)
+Hijack ten different fuctions with LD_PRELOAD: 
+- getchar() (tested on the simulation program test_getchar externally)
 - stat(), readdir(), openat() (added afterwards)
 - execve()
 - open()
@@ -34,7 +34,7 @@ To run install_invisible_blocker_upt.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: `./install_invisible_blocker_upt.sh`
 
-To run OShomeworkBash.sh (permanent changes):
+(Latest version) To run OShomeworkBash.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: `./OShomeworkBash.sh
 - has stat and added functions in it, runs OShomework.c
