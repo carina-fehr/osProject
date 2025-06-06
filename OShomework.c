@@ -22,8 +22,9 @@
 #include <pwd.h>
 #include <termios.h> //for exit cleanup
 #include <unistd.h>
-#include <stdbool.h>
+#include <stdbool.h> // for bool 
 #include <dirent.h>
+#include <ctype.h> //for write
 
 
 typedef struct dirent* (*orig_readdir_f_type)(DIR *);
