@@ -27,6 +27,7 @@ To run the OShomework.c file manually:
 - `nano preloadLib.c` (permission denied) 
 - `w3m google.com` (should not work)
 - `w3m youtube.com` (should not work)
+- `ls`or `ls -l` (should not show .txt files)
 - To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for OShomework.c
 
 To run OShomework.sh (permanent changes):
@@ -34,9 +35,6 @@ To run OShomework.sh (permanent changes):
 - then run it like usual with: ./OShomework.sh
 - has extra function readdir added to it, runs preloadLib.c
 - To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families, app related or IP related
-- To test readdir hijack for file hiding: type ls after running, should not show any .txt files in directory
-
-
 To run getchar with test_getchar: read instructions at the beginning of the getchar file
 
 
