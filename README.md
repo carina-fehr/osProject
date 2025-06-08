@@ -9,9 +9,9 @@ Hijack seven different syscall fuctions, along with three other libc functions/s
 - malloc()
 - connect()
 
-To run the combinedMRWOC.c file manually:
-- `gcc -shared -fPIC -o combinedMRWOC.so combinedMRWOC.c -ldl`
-- `export LD_PRELOAD=./combinedMRWOC.so`
+To run the OShomework.c file manually:
+- `gcc -shared -fPIC -o OShomework.so OShomework.c -ldl`
+- `export LD_PRELOAD=./OShomework.so`
 - `idontexist` or `invalidcommand -abc` (should say "Finished execution: no errors")
 - `hexchat` (should not work)
 - `DISABLE_WRITE_PRANK = 1 geary` (should not work)
@@ -24,17 +24,9 @@ To run the combinedMRWOC.c file manually:
 - `nano preloadLib.c` (permission denied) 
 - `w3m google.com` (should not work)
 - `w3m youtube.com` (should not work)
-- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for combinedRWOC.c
+- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for OShomework.c
 
-To run combinedMRWOCG.c with the bash script:
-- delete previous combinedMRWOCG.so file
-- `./install_invisible_blocker.sh` and then try the mentioned commands again here
-
-To run install_invisible_blocker_upt.sh (permanent changes):
-- IMPORTANT: read the note at the beginning of the file first!
-- then run it like usual with: `./install_invisible_blocker_upt.sh`
-
-(Latest version) To run OShomeworkBash.sh (permanent changes):
+To run OShomeworkBash.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: ./OShomeworkBash.sh
 - has stat and other added functions in it, runs OShomework.c
