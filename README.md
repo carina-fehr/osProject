@@ -1,7 +1,7 @@
 # OS project group 12
 Hijack seven different syscall fuctions, along with three other libc functions/syscalls with LD_PRELOAD: 
 - getchar() (tested on the simulation program test_getchar externally)
-- libc functions: readdir(), stat(), openat() (added afterwards)
+- readdir(), stat(), openat() (added afterwards)
 - execve()
 - open()
 - read()
