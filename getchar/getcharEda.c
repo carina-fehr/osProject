@@ -6,10 +6,10 @@
 #include <ctype.h>
 
 // Hijacks the getchar function to replace certain letters (vowels) with random words
-// How to run getchar.c:
-// gcc -shared -fPIC -o  getchar.so getchar..c -ldl
+// How to run getcharEda.c:
+// gcc -shared -fPIC -o  getcharEda.so getcharEda.c -ldl
 // gcc -o test_getchar test_getchar.c
-// LD_PRELOAD=./getchar.so ./test_getchar
+// LD_PRELOAD=./getcharEda.so ./test_getchar
 
 typedef int (*orig_getchar_type)(void);
 
