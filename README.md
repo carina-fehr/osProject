@@ -1,6 +1,6 @@
 # OS project group 12
-Hijack seven different syscall fuctions, along with three other libc functions/syscalls with LD_PRELOAD: 
-- getchar() (tested on the simulation program test_getchar externally)
+Hijack seven different syscall fuctions, along with one extra libc function/syscall with LD_PRELOAD: 
+- getchar() (tested on the simulation program test_getcharEda externally)
 - readdir() (added afterwards)
 - execve()
 - open()
@@ -29,15 +29,14 @@ To run the OShomework.c file manually:
 - `w3m youtube.com` (should not work)
 - To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for OShomework.c
 
-To run OShomeworkBash.sh (permanent changes):
+To run OShomework.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
-- then run it like usual with: ./OShomeworkBash.sh
-- has stat and other added functions in it, runs OShomework.c
-- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families
-- To test stat and other newly added functions hijack for file hiding: bash after running, then ls should not show any .txt files in directory
+- then run it like usual with: ./OShomework.sh
+- has extra function readdir added to it, runs preloadLib.c
+- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families, app related or IP related
+- To test readdir hijack for file hiding: type ls after running, should not show any .txt files in directory
 
 
 To run getchar with test_getchar: read instructions at the beginning of the getchar file
-
 
 
