@@ -608,7 +608,7 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
 
 
 //####### CONNECT #######
-// Override connect() to selectively block certain ports
+// Override connect() to selectively block certain ports and all other IP connections
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     static int (*original_connect)(int, const struct sockaddr *, socklen_t) = NULL;
     if (!original_connect) {
@@ -641,7 +641,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         }
     }
 
-    if (should_block) {
+    if (should_block) { // different log files for app related blocking (blocked2) and IPv4/6 related blocking (blocked)
         block_count++;
         printf("[INTERNET_ACCESS_BLOCKED] Blocking connection to %s:%d\n", ip, port);
         printf("[INTERNET_ACCESS_BLOCKED] Total blocked: %d\n", block_count);
@@ -675,7 +675,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 }
 
 //####### READDIR #######
-// Hijack ls command to not show .txt files
+// Hijack ls command to not show .txt files, file hiding
 
 static int ends_with_txt(const char *str) {
     if (!str) return 0;
