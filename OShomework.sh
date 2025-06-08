@@ -9,7 +9,7 @@
 #
 # To run:
 #
-# run with: ./OShomework
+# run with: ./OShomework.sh
 #
 # How to undo it:
 # 
