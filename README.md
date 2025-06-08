@@ -30,6 +30,11 @@ To run the OShomework.c file manually:
 - `ls`or `ls -l` (should not show .txt files)
 - To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for OShomework.c
 
+To run OShomeworkNP.sh (non-permanent):
+- this bash script also doesn't do any file hiding due to the non permanent changes
+- to run this it needs to be sourced as follows: source OShomeworkNP.sh
+- it can be reset by starting a new terminal session or with unset LD_PRELOAD on the current terminal
+
 To run OShomework.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: ./OShomework.sh
