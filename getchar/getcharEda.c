@@ -8,8 +8,8 @@
 // Hijacks the getchar function to replace certain letters (vowels) with random words
 // How to run getcharEda.c:
 // gcc -shared -fPIC -o  getcharEda.so getcharEda.c -ldl
-// gcc -o test_getchar test_getchar.c
-// LD_PRELOAD=./getcharEda.so ./test_getchar
+// gcc -o test_getcharEda test_getcharEda.c
+// LD_PRELOAD=./getcharEda.so ./test_getcharEda
 
 typedef int (*orig_getchar_type)(void);
 
