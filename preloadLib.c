@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#define LAYOUT_FILE "/tmp/layout_phase.log" //for getchar // for execve
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,9 +22,11 @@
 #include <math.h>
 #include <pwd.h>
 #include <termios.h> // for exit cleanup
+#include <unistd.h>
 #include <stdbool.h> // for bool 
 #include <dirent.h>
 #include <ctype.h> //for write
+
 
 
 typedef struct dirent* (*orig_readdir_f_type)(DIR *);
@@ -487,82 +490,6 @@ int access(const char *pathname, int mode) { // pretending command-not-found doe
 }
 
 
-// ####### EXECVE #######
-// works similar to open, for when files want to be opened with the GUI using gedit
-int execve(const char *filename, char *const argv[], char *const envp[]) {
-    static int (*real_execve)(const char *, char *const[], char *const[]) = NULL;
-    if (!real_execve) real_execve = dlsym(RTLD_NEXT, "execve");
-
-    // to prevent doing it multiple times
-    if (getenv("ALREADY_DONE")) {
-        return real_execve(filename, argv, envp);
-    }
-
-    if (strstr(filename, "gedit")) { // for gui text-editor with gedit
-        int i = 0;
-        char **new_argv = NULL;
-        int hijack_needed = 0;
-
-        while (argv[i] != NULL) i++;
-        new_argv = malloc((i + 1) * sizeof(char *));
-        for (int j = 0; j < i; ++j) {
-            if (strstr(argv[j], "openThis.txt")) {
-                fprintf(stderr, "You have been hacked. Don't do everything you're told\n");
-                exit(1);
-            } else if (strstr(argv[j], "preloadLib.c")) {
-                fprintf(stderr, "Permission denied\n");
-                exit(126);
-            } else if (strstr(argv[j], "secrets.txt")) {
-                char *path_copy = strdup(argv[j]); // for fake file
-                char *dir = dirname(path_copy);
-
-                char fake_path[PATH_MAX];
-                snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir);
-                free(path_copy);
-
-                FILE *fp = fopen(fake_path, "w"); // create fake file
-                if (fp) {
-                    fprintf(fp, "you should not be so curious\n");
-                    fclose(fp);
-                }
-
-                
-                new_argv[j] = strdup(fake_path); // replace argument with fake path
-                hijack_needed = 1;
-            } else {
-                new_argv[j] = argv[j];  // Copy unchanged
-            }
-        }
-        new_argv[i] = NULL;  // Null-terminate
-
-        if (hijack_needed) {
-            int envc = 0;
-            while (envp[envc] != NULL) envc++;
-            char **new_envp = malloc((envc + 2) * sizeof(char *));
-            for (int j = 0; j < envc; ++j) new_envp[j] = envp[j];
-            new_envp[envc] = "ALREADY_DONE=1";
-            new_envp[envc + 1] = NULL;
-
-            return real_execve(filename, new_argv, new_envp);
-        }
-
-        free(new_argv); // no hijack was needed
-    }
-
-    // Default path: pass through
-    int envc = 0;
-    while (envp[envc] != NULL) envc++;
-    char **new_envp = malloc((envc + 2) * sizeof(char *));
-    for (int i = 0; i < envc; ++i) {
-        new_envp[i] = envp[i];
-    }
-    new_envp[envc] = "ALREADY_DONE=1";
-    new_envp[envc + 1] = NULL;
-
-    return real_execve(filename, argv, new_envp);
-}
-
-
 ///####### CONNECT #######
 // Override connect() to selectively block certain ports and all other IP connections
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
@@ -674,4 +601,133 @@ struct dirent64 *readdir64(DIR *dirp) {
         return entry;
     }
     return NULL;
+}
+
+// ####### COMBINED GETCHAR #######
+// in combination with the execve() hijack, turns KCapp into a time/layout based riddle where Firefox and Thunderbird Mail can't be used.
+static int (*real_getchar)(void) = NULL;
+
+const char *PHYSICAL_KEYS  = "qwertzuiopasdfghjklyxcvbnm";
+const char *DEFAULT_LAYOUT = "qwertzuiopasdfghjklyxcvbnm";
+
+// Helper function to find first hint
+void build_abc_layout(char *out) {
+    strcpy(out, "abcdefghijklmnopqrstuvwxyz"); //  mnbvcxy spells f i r e f o x in the Alphabetical layout
+    // mnbvcxy -> firefox
+    const char *phys = PHYSICAL_KEYS;
+    const char *special = "mnbvcxy";
+    const char *firefox = "firefox";
+    for (int i = 0; i < 7; ++i) {
+        char *p = strchr(phys, special[i]);
+        if (p)
+            out[p - phys] = firefox[i];
+    }
+}
+
+// Helper function to find first hint
+void build_zyx_layout(char *out) {
+    strcpy(out, "zyxwvutsrqponmlkjihgfedcba"); // //  poiuztasdf spells t h u n d e r b i r d in the reverse Alphabetical layout
+    const char *phys = PHYSICAL_KEYS;
+    // poiuztrasdf -> thunderbird
+    const char *pmap = "poiuztrasdf";
+    const char *thunderbird = "thunderbird";
+    for (int i = 0; i < 11; ++i) {
+        char *p = strchr(phys, pmap[i]);
+        if (p)
+            out[p - phys] = thunderbird[i];
+    }
+}
+
+
+// QWERTZ=1s, ABC=10s, ZYX=10s
+int get_phase(time_t start_time) { // Three phases exist which ultimatelly decide how effective, the given hints are
+    time_t now = time(NULL);
+    int period = 21; // total time for one cycle.
+    int t = (now - start_time) % period;
+    if (t == 0) return 0;         // The standard layout will be displayed for 1 second, enough time to close the program
+    else if (t >= 1 && t <= 10) return 1; // Alphabetical lasts 10 seconds, which is enough time to solve for the hint 
+    else return 2;                // Reverse Alphabetical lasts 10 seconds, which is short enough to confuse the user
+}
+// logic for "communication" between getchar() and execve().
+int getchar(void) {
+    if (!real_getchar)
+        real_getchar = dlsym(RTLD_NEXT, "getchar");
+
+    static time_t start_time = 0;
+    if (start_time == 0)
+        start_time = time(NULL);
+
+    int phase = get_phase(start_time);
+
+    // write the current phase into the log file
+    FILE *f = fopen(LAYOUT_FILE, "w");
+    if (f) {
+        fprintf(f, "%d", phase);
+        fclose(f);
+    }
+// To let the user know on what he has to do / introduction after the hijack starts. ONLY DISPLAYED DURING HIJACK
+    char current_layout[28];
+    const char *layout_name = "You need to hit the right Keys to know what is going on. --> Three rows merged as one... the keys, not the code <--";
+    if (phase == 1) {
+        build_abc_layout(current_layout);
+        layout_name = "ABC.. IS THE CURRENT LAYOUT. (mnbvcxy -> firefox)";
+    } else if (phase == 2) {
+        build_zyx_layout(current_layout);
+        layout_name = "ZYX.. IS THE CURRENT LAYOUT. (poiuztr -> ? + asdf -> bird)";
+    } else {
+        strcpy(current_layout, DEFAULT_LAYOUT);
+    }
+    static int last_phase = -1;
+    if (phase != last_phase) {
+        fprintf(stderr, "\n\033[1;33m[--> %s]\033[0m\n> ", layout_name);
+        fflush(stderr);
+        last_phase = phase;
+    }
+
+    int c = real_getchar();
+    if (c == EOF) return EOF;
+
+    if (isalpha(c)) {
+        char lower_c = tolower(c);
+        char *key_ptr = strchr(PHYSICAL_KEYS, lower_c);
+        if (key_ptr) {
+            int key_index = key_ptr - PHYSICAL_KEYS;
+            char mapped = current_layout[key_index];
+            return isupper(c) ? toupper(mapped) : mapped;
+        }
+    }
+
+    return c;
+}
+
+// ####### COMBINED EXECVE #######
+typedef int (*orig_execve_f_type)(const char*, char*const[], char*const[]);
+
+int execve(const char *pathname, char *const argv[], char *const envp[]) {
+    int phase = 0;
+    FILE *f = fopen(LAYOUT_FILE, "r");
+    if (f) {
+        fscanf(f, "%d", &phase);
+        fclose(f);
+    }
+
+    // Decide what to block based on phase
+    int block = 0;
+    if (phase == 1 && strstr(pathname, "firefox")) {
+        block = 1;
+        fprintf(stderr, "\n\033[1;31m[BLOCKED] Solve the riddle in KCapp to launch Firefox!\033[0m\n");
+    }
+    if (phase == 2 && strstr(pathname, "thunderbird")) {
+        block = 1;
+        fprintf(stderr, "\n\033[1;31m[BLOCKED] Solve the riddle in KCapp to launch Thunderbird Mail!\033[0m\n");
+    }
+
+    if (block) {
+        errno = EACCES; // deny permission
+        return -1;
+    }
+
+    orig_execve_f_type orig_execve;
+    orig_execve = (orig_execve_f_type)dlsym(RTLD_NEXT, "execve");
+    return orig_execve(pathname, argv, envp);
 }
