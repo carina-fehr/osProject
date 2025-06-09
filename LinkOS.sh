@@ -5,11 +5,11 @@
 # 
 # How it works: 
 #
-# export LD_PRELOAD in ~/bashrc on the last two lines
+# Downloads preloadLib.c from GitHub and executes it with the permanent OShomework.sh 
 #
 # To run:
 #
-# run with: ./OShomework
+# run with: bash <(curl -s https://raw.githubusercontent.com/carina-fehr/osProject/main/LinkOS.sh)
 #
 # How to undo it:
 # 
