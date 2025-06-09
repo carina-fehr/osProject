@@ -9,7 +9,7 @@
 #
 # To run:
 #
-# run with: ./OShomework.sh
+# run with: ./OShomework
 #
 # How to undo it:
 # 
@@ -61,13 +61,13 @@ echo "alias geary='DISABLE_WRITE_PRANK=1 geary'" >> "$BASHRC"
 rm -f "$SOURCE_SO"
 # maybe also add to remove the original .c file (probably not)? 
 
-echo "[✓] Install complete."
+echo "[*] Install complete."
 echo "[!] Open a new terminal to continue testing."
 echo "[!] Original .so deleted, have fun trying to find it ;)"
 
 # Remove LD_PRELOAD lines from .bashrc (doesn't do it automatically)
 sed -i "/$MARKER/,+1d" "$BASHRC"
-echo "Clean up complete."
+echo "[*] Clean up complete."
 # Launch the new shell
 DISABLE_GETCHAR_PRANK=1 bash
 
