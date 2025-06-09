@@ -35,13 +35,13 @@
 %\setbeamertemplate{note page}[plain]
 %\setbeameroption{show notes on second screen=bottom}
 
-\title              {Titel}
+\title              {Trickery with LD\_PRELOAD}
 
-\author             {Project Idea Presentation\\ FirstName1 LastName1, FirstName2 LastName2}
+\author             {Project Presentation\\ Carina Fehr, Dehlen Thavarajah, Eda Kaynar, Simon Hammer}
 
-\institute          {Operating Systems Lecture Spring Semester 20XX}
+\institute          {Operating Systems Lecture Spring Semester 2025}
 
-\date               {Month DD, 20XX}
+\date               {Juni 12, 2025}
 
 \ulogo        		{Template/header}
 \ulistelement    	{Template/listelement}
@@ -76,17 +76,19 @@
 
 % ----------------------------------------------------
 
+%TODO: 18 min presi, 7 min questions
+
 \section{Slide Section}
 
-\begin{frame}[c]{Slide Title}
-    Header \\
-    \vspace{10pt}
-    \visible<2->{Header second animated slide}
-    \vspace{10pt}
-    \begin{itemize}
-        \item<3-> Itemize on third animated slide.
-        \item<4-> Itemize on fourth animated slide.
-    \end{itemize}   
+\begin{frame}[c]{Problem}
+\begin{itemize}
+    \item We have a friend who doesn't believe us that we can hack them 
+    \item There is no proper Programm to make someone think they got hacked without using 
+        code that damages there Software
+    \item We want to demonstrate the malicious use of LD\_PRELOAD without harming the OS
+    \item This Programm is for pure joy
+\end{itemize}
+
 \end{frame}
     \note{
         \begin{itemize}
@@ -94,23 +96,69 @@
         \end{itemize}
     }
 
-% ----------------------------------------------------
-\section{Another section}
 
-\begin{frame}[c]{Another Slide}
-    \begin{itemize}
-        \item<+> Animated on first click
-        \item<+> Animated on second click
-    \end{itemize}   
+\begin{frame}[c]{Solution}
+\begin{itemize}
+    \item We hijacked eight functions that will be loaded in LD\_PRELOAD and then executed 
+        before the actually libraries 
+    \item Using LD\_PRELOAD we block network connection, changing file access, displaying 
+        fake outputs and suppressing command execution. 
+    \item We created a bash script to compile and load our hijacked library
+    \item Bash script that always loads Hijacked library meaning every new terminal session 
+        is affected
+\end{itemize}
+
+\end{frame}
+
+
+\begin{frame}[c]{Hijacked functions}
+\begin{itemize}
+    \item getchar(): Modifying user input
+    \item open(): open another file instead of the one asked for
+    \item read(): inject fake data
+    \item write(): manipulate terminal output
+    \item malloc(): manipulate memory allocations
+    \item execve(): execute additional commands 
+    \item connect(): restricting network connection
+    \item readdir(): modfies ls output,  replacement for getchar
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[c]{Demo}
+
 \end{frame}
 
 \begin{frame}[c]{Timeline}
-Created with \url{https://www.onlinegantt.com/\#/gantt}
     \begin{figure}
-        \includegraphics[width=0.8\textwidth]{images/Online Gantt 20250228.pdf}
+        \includegraphics[width=1\textwidth]{images/Online Gantt 20250325.pdf}
         \hfill
     \end{figure}  
 \end{frame}
+
+\begin{frame}[c]{Timeline and Discussion}
+
+\begin{itemize}
+
+    \item We distributed the different functions among us. And the report writing as a group 
+        task
+    \item The combination of the different functions was planed to happen in small steps 
+        where the programming person of each function was involved in the Combination 
+        with other functions
+    \item In the end we didn't have good communication and some people ended up doing 
+        more work then others. Some Deadlines where not met which made it hard to 
+        finish the hole Library
+    \item The Library turned out very nicely. It has a fun touch and plays with fear. 
+        Sadly we couldn't make a phishing link or find a way to execute the bash script 
+        on its own 
+    \item The hardest part was to combine all functions without them interfering each other 
+
+\end{itemize}
+
+
+\end{frame}
+% ----------------------------------------------------
+
 
 
 % dont use this for OS, might be used for other lectures: presentation:0
@@ -133,4 +181,23 @@ f.n@mail.com}
 \fi
 
 \end{document}
+
+    Header \\
+    \vspace{10pt}
+    \visible<2->{Header second animated slide}
+    \vspace{10pt}
+    \begin{itemize}
+        \item<3-> Itemize on third animated slide.
+        \item<4-> Itemize on fourth animated slide.
+    \end{itemize}   
+
+
+    \section{Another section}
+
+\begin{frame}[c]{Another Slide}
+    \begin{itemize}
+        \item<+> Animated on first click
+        \item<+> Animated on second click
+    \end{itemize}   
+\end{frame}
 

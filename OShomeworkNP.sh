@@ -6,6 +6,13 @@
     exit 1
 }
 
+# find preload 
+# SOURCE_SO=$(find ~/ -name preloadLib.so | grep -m 1 "preloadLib.so") 
+# SOURCE_C=$(find ~/ -name preloadLib.c | grep -m 1 "preloadLib.c") 
+
+# Compile the .so from the .c file
+#gcc -shared -fPIC -o "$SOURCE_SO" "$SOURCE_C" -ldl
+
 # Compile preloadLib.c into preloadLib.so
 gcc -shared -fPIC -o preloadLib.so preloadLib.c -ldl
 
