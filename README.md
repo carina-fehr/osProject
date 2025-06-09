@@ -27,21 +27,23 @@ To run the OShomework.c file manually:
 - `nano preloadLib.c` (permission denied) 
 - `w3m google.com` (should not work)
 - `w3m youtube.com` (should not work)
+- `curl google.com` (should not work)
 - `ls`or `ls -l` (should not show .txt files)
-- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for OShomework.c
+- To check the log file for blocked connections: `cat /tmp/blocked.log` for IPv4/6 connections or `blocked2.log` for app related connections (disable prank first with `unset LD_PRELOAD`)
 
 To run OShomeworkNP.sh (non-permanent):
-- this bash script also doesn't do any file hiding due to the non permanent changes
-- to run this it needs to be sourced as follows: source OShomeworkNP.sh
+- this bash script doesn't do any file hiding due to the non permanent changes
+- to run this it needs to be sourced as follows: `source OShomeworkNP.sh`
 - it can be reset by starting a new terminal session or with unset LD_PRELOAD on the current terminal
 
 To run OShomework.sh (permanent changes):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: ./OShomework.sh
-- has extra function readdir added to it, runs preloadLib.c
-- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families, app related or IP related
+- has extra function readdir added to it
+- runs preloadLib.c
+- To check the log file for blocked connections: `cat /tmp/blocked.log` or `blocked2.log` for different address families, app related or IP related (disable prank first with `unset LD_PRELOAD`)
 
 
-To run getchar with test_getchar: read instructions at the beginning of the getchar file
+To run getcharEda with test_getcharEda: read instructions at the beginning of the getcharEda file
 
 
