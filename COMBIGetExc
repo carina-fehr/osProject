@@ -1,0 +1,100 @@
+#define _GNU_SOURCE
+#include <stdio.h>
+#include <stdlib.h>
+#include <dlfcn.h>
+#include <ctype.h>
+#include <time.h>
+#include <string.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
+
+// File for communication
+#define LAYOUT_FILE "/tmp/layout_phase.log"
+
+// --- GETCHAR HIJACK ---
+static int (*real_getchar)(void) = NULL;
+
+const char *PHYSICAL_KEYS  = "qwertzuiopasdfghjklyxcvbnm";
+const char *DEFAULT_LAYOUT = "qwertzuiopasdfghjklyxcvbnm";
+const char *ABC_LAYOUT     = "abcdefghijklmnopqrstuvwxyz";
+const char *ZYX_LAYOUT     = "zyxwvutsrqponmlkjihgfedcba";
+
+int getchar(void) {
+    if (!real_getchar)
+        real_getchar = dlsym(RTLD_NEXT, "getchar");
+
+    static time_t start_time = 0;
+    if (start_time == 0)
+        start_time = time(NULL);
+
+    time_t now = time(NULL);
+    int phase = ((now - start_time) / 30) % 3; // 0=QWERTZ, 1=ABC, 2=ZYX
+
+    // Write the current phase to the log file
+    FILE *f = fopen(LAYOUT_FILE, "w");
+    if (f) {
+        fprintf(f, "%d", phase);
+        fclose(f);
+    }
+
+    const char *current_layout = DEFAULT_LAYOUT;
+    const char *layout_name = "DEFAULT (QWERTZ)";
+    switch (phase) {
+        case 1: current_layout = ABC_LAYOUT; layout_name = "ABC (A-Z)"; break;
+        case 2: current_layout = ZYX_LAYOUT; layout_name = "ZYX (Z-A)"; break;
+    }
+    static int last_phase = -1;
+    if (phase != last_phase) {
+        fprintf(stderr, "\n\033[1;33m[KEYBOARD LAYOUT CHANGED TO: %s]\033[0m\n> ", layout_name);
+        fflush(stderr);
+        last_phase = phase;
+    }
+
+    int c = real_getchar();
+    if (c == EOF) return EOF;
+
+    if (isalpha(c)) {
+        char lower_c = tolower(c);
+        char *key_ptr = strchr(PHYSICAL_KEYS, lower_c);
+        if (key_ptr) {
+            int key_index = key_ptr - PHYSICAL_KEYS;
+            char mapped = current_layout[key_index];
+            return isupper(c) ? toupper(mapped) : mapped;
+        }
+    }
+
+    return c;
+}
+
+// --- EXECVE HIJACK ---
+typedef int (*orig_execve_f_type)(const char*, char*const[], char*const[]);
+
+int execve(const char *pathname, char *const argv[], char *const envp[]) {
+    int phase = 0;
+    FILE *f = fopen(LAYOUT_FILE, "r");
+    if (f) {
+        fscanf(f, "%d", &phase);
+        fclose(f);
+    }
+
+    // Decide what to block based on phase
+    int block = 0;
+    if (phase == 1 && strstr(pathname, "firefox")) {
+        block = 1;
+        fprintf(stderr, "\n\033[1;31m[BLOCKED] Firefox cannot be launched in ABC layout!\033[0m\n");
+    }
+    if (phase == 2 && strstr(pathname, "libreoffice")) {
+        block = 1;
+        fprintf(stderr, "\n\033[1;31m[BLOCKED] LibreOffice cannot be launched in ZYX layout!\033[0m\n");
+    }
+
+    if (block) {
+        errno = EACCES; // Permission denied
+        return -1;
+    }
+
+    orig_execve_f_type orig_execve;
+    orig_execve = (orig_execve_f_type)dlsym(RTLD_NEXT, "execve");
+    return orig_execve(pathname, argv, envp);
+}
