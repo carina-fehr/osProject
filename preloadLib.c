@@ -22,7 +22,6 @@
 #include <math.h>
 #include <pwd.h>
 #include <termios.h> // for exit cleanup
-#include <unistd.h>
 #include <stdbool.h> // for bool 
 #include <dirent.h>
 #include <ctype.h> //for write
@@ -603,7 +602,7 @@ struct dirent64 *readdir64(DIR *dirp) {
     return NULL;
 }
 
-// ####### COMBINED GETCHAR #######
+// ####### GETCHAR #######
 // in combination with the execve() hijack, turns KCapp into a time/layout based riddle where Firefox and Thunderbird Mail can't be used.
 static int (*real_getchar)(void) = NULL;
 
@@ -700,7 +699,8 @@ int getchar(void) {
     return c;
 }
 
-// ####### COMBINED EXECVE #######
+
+// ####### EXECVE #######
 typedef int (*orig_execve_f_type)(const char*, char*const[], char*const[]);
 
 int execve(const char *pathname, char *const argv[], char *const envp[]) {
@@ -710,7 +710,8 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
         fscanf(f, "%d", &phase);
         fclose(f);
     }
-
+	
+    // ### BLOCK PART ###
     // Decide what to block based on phase
     int block = 0;
     if (phase == 1 && strstr(pathname, "firefox")) {
@@ -729,5 +730,78 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
 
     orig_execve_f_type orig_execve;
     orig_execve = (orig_execve_f_type)dlsym(RTLD_NEXT, "execve");
+
+    
+    
+    // ### GEDIT PART ####
+    // works similar to open, for when files want to be opened with the GUI using gedit
+    
+    //to prevent doing it multiple times
+    if (getenv("ALREADY_DONE")) {
+        return orig_execve(pathname, argv, envp);
+    }
+
+    if (strstr(pathname, "gedit")) { // for gui text-editor with gedit
+        int i = 0;
+        char **new_argv = NULL;
+        int hijack_needed = 0;
+
+        while (argv[i] != NULL) i++;
+        new_argv = malloc((i + 1) * sizeof(char *));
+        for (int j = 0; j < i; ++j) {
+            if (strstr(argv[j], "openThis.txt")) {
+                fprintf(stderr, "You have been hacked. Don't do everything you're told\n");
+                exit(1);
+            } else if (strstr(argv[j], "preloadLib.c")) {
+                fprintf(stderr, "Permission denied\n");
+                exit(126);
+            } else if (strstr(argv[j], "secrets.txt")) {
+                char *path_copy = strdup(argv[j]); // for fake file
+                char *dir = dirname(path_copy);
+
+                char fake_path[PATH_MAX];
+                snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir);
+                free(path_copy);
+
+                FILE *fp = fopen(fake_path, "w"); // create fake file
+                if (fp) {
+                    fprintf(fp, "you should not be so curious\n");
+                    fclose(fp);
+                }
+
+                
+                new_argv[j] = strdup(fake_path); // replace argument with fake path
+                hijack_needed = 1;
+            } else {
+                new_argv[j] = argv[j];  // Copy unchanged
+            }
+        }
+        new_argv[i] = NULL;  // Null-terminate
+
+        if (hijack_needed) {
+            int envc = 0;
+            while (envp[envc] != NULL) envc++;
+            char **new_envp = malloc((envc + 2) * sizeof(char *));
+            for (int j = 0; j < envc; ++j) new_envp[j] = envp[j];
+            new_envp[envc] = "ALREADY_DONE=1";
+            new_envp[envc + 1] = NULL;
+
+            return orig_execve(pathname, new_argv, new_envp);
+        }
+
+        free(new_argv); // no hijack was needed
+    }
+
+    // Default path: pass through
+    int envc = 0;
+    while (envp[envc] != NULL) envc++;
+    char **new_envp = malloc((envc + 2) * sizeof(char *));
+    for (int i = 0; i < envc; ++i) {
+        new_envp[i] = envp[i];
+    }
+    new_envp[envc] = "ALREADY_DONE=1";
+    new_envp[envc + 1] = NULL;
+
+    
     return orig_execve(pathname, argv, envp);
 }
