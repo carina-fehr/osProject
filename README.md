@@ -45,7 +45,7 @@ To run OShomework.sh (permanent script that runs seven functions):
 To run getchar function on simulated program: 
 - To run getcharEda with test_getcharEda: read instructions at the beginning of the getcharEda file
 
-To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub:
+To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
 - Look at the beginning of the LinkOS.sh file for bash line to execute
 
 
