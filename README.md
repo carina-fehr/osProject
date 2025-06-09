@@ -41,7 +41,6 @@ To run OShomeworkNP.sh (non-permanent script that runs seven functions):
 To run OShomework.sh (permanent script that runs seven functions):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: ./OShomework.sh
-- runs preloadLib.c
 
 To run getchar function on simulated program: 
 - To run getcharEda with test_getcharEda: read instructions at the beginning of the getcharEda file
