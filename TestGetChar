@@ -1,0 +1,13 @@
+#include <stdio.h>
+#include <ctype.h>
+
+int main() {
+    printf("Start typing to see mappings (press Ctrl+C to exit):\n");
+    while (1) {
+        int c = getchar();
+        if (c == EOF) break;
+        printf("Received: %c (0x%x)\n", isprint(c) ? c : ' ', c);
+        fflush(stdout);
+    }
+    return 0;
+}
