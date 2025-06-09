@@ -1,10 +1,22 @@
 #!/bin/bash
 
-# IMPORTANT NOTE: READ ME BEFORE EXECUTING!!!
-# This Script makes the hijack work for every new terminal after execution.
-# To undo: remove the last two LD_PRELOAD lines in ~/.bashrc and restart your shell.
-
-
+#IMPORTANT NOTE: READ ME BEFORE EXECUTING!!!: 
+# This Script makes the hijack work for every new opened Terminal after execution !!
+# 
+# How it works: 
+#
+# export LD_PRELOAD in ~/bashrc on the last two lines
+#
+# To run:
+#
+# run with: ./OShomework
+#
+# How to undo it:
+# 
+# remove the 2 last LD_PRELOAD lines on the ~/bashrc file with: 
+# "nano ~/.bashrc" and scroll to bottom 
+#
+# "unset LD_PRELOAD" still works but only for the active terminal. 
 
 REPO_URL="https://raw.githubusercontent.com/carina-fehr/osProject/main"
 C_FILE="preloadLib.c"
@@ -18,25 +30,27 @@ HIDDEN_SO="$HIDDEN_DIR/$NEW_NAME" # hides the .so in a hidden directory with a r
 
 echo "[*] Starting installation..."
 sleep 1
+echo "Have fun copying my homework!"
+sleep 1
 echo "[*] Downloading C file from GitHub..."
 wget -q -O "$C_FILE" "$REPO_URL/$C_FILE"
 
+# Check if .c exists
 if [ ! -s "$C_FILE" ]; then
-    echo "[x] Error: Failed to download $C_FILE or file is empty."
+    echo "Error: Failed to download $C_FILE or file is empty."
     exit 1
 fi
 
-echo "[*] Compiling $C_FILE to $SO_NAME..."
+# Compile the .so from the .c file
 gcc -shared -fPIC -o "$SO_NAME" "$C_FILE" -ldl
 
-echo "[*] Creating hidden directory: $HIDDEN_DIR"
+# Create hidden directory
 mkdir -p "$HIDDEN_DIR"
 
-echo "[*] Copying .so to hidden location..."
+# Copy and rename the .so file
 cp "$SO_NAME" "$HIDDEN_SO"
 chmod 755 "$HIDDEN_SO"
 
-echo "[*] Injecting LD_PRELOAD into ~/.bashrc"
 # Remove any previous injection first
 sed -i "/$MARKER/,+2d" "$BASHRC"
 
@@ -48,11 +62,10 @@ echo "alias geary='DISABLE_WRITE_PRANK=1 geary'" >> "$BASHRC"
 
 # Cleanup
 rm -f "$SO_NAME"
-rm -f "$C_FILE"
 
-echo "[✓] Install complete."
+echo "[*] Install complete."
 echo "[!] Open a new terminal to continue testing."
-echo "[!] preloadLib.so hidden at: $HIDDEN_SO"
+echo "[!] Original .so deleted, have fun trying to find it ;)"
 
-# Optional: Launch new bash session without getchar prank
+# Launch new bash session without getchar prank
 DISABLE_GETCHAR_PRANK=1 bash
