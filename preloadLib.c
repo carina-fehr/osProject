@@ -21,7 +21,6 @@
 #include <math.h>
 #include <pwd.h>
 #include <termios.h> // for exit cleanup
-#include <unistd.h>
 #include <stdbool.h> // for bool 
 #include <dirent.h>
 #include <ctype.h> //for write
@@ -33,12 +32,12 @@ typedef int (*orig_open_f_type)(const char *, int, ...);
 typedef int (*orig_access_f_type)(const char *, int);
 typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
 
-static void* (*original_malloc)(size_t)=NULL;
+static void* (*original_malloc)(size_t) = NULL;
 ssize_t (*original_read)(int fd, void *buf, size_t count) = NULL;
 ssize_t (*original_write)(int fd, const void *buf, size_t count) = NULL;
 int (*original_open)(const char *pathname, int flags, ...) = NULL;
 static int (*connect_connect)(int, const struct sockaddr *, socklen_t) = NULL;
-int (*original_getchar)(void) =NULL;
+int (*original_getchar)(void) = NULL;
 
 static int block_count = 0; // Global counter for blocked connections
 
@@ -95,7 +94,7 @@ void *malloc(size_t size) {
     } else {
         base = exe;
     }
-        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0 || strcmp(base, "cat") == 0 || strcmp(base, "nano") == 0 || strcmp(base, "head") == 0 || strcmp(base, "man") == 0) {
+        if (strcmp(base, "bash") == 0 || strcmp(base, "less") == 0 || strcmp(base, "cat") == 0 || strcmp(base, "nano") == 0 || strcmp(base, "head") == 0 || strcmp(base, "man") == 0 || strcmp(base, "gedit") == 0) {
             return original_malloc(size); // Avoid collision with read() 
         }
     }
@@ -116,17 +115,22 @@ void *malloc(size_t size) {
 //####### READ #######
 // Hijack of the read() function. Simulates deletion with cat, less, chown or chmod. Simulates remote access with install and apt-get.
 void restore_terminal() { //function needed to stop freezing the terminal after the _exit(0) command
-    struct termios term;
-    int fd = fileno(stdin);
-    if (tcgetattr(fd, &term) == 0) {
-        term.c_lflag |= (ECHO | ICANON);
-        tcsetattr(fd, TCSANOW, &term);
+    struct termios terminal;
+    FILE *input_stream = stdin;
+    int input_fd = fileno(input_stream);
+    int result = tcgetattr(input_fd, &terminal); // get terminal settings
+    if (result != 0) {
+        return; // do nothing when no settings 
     }
+    
+    terminal.c_lflag = terminal.c_lflag | ICANON; // turn on input buffer until enter
+    terminal.c_lflag = terminal.c_lflag | ECHO; // turn on echo to show typed letters on screen
+    tcsetattr(input_fd, TCSANOW, &terminal); // set terminal to those settings
 }
 
 void remote_access() {
     fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
-    fprintf(stderr, "Remote access detected from IP 192.168.0.173\n"); // just a random IP nr
+    fprintf(stderr, "Remote access detected from IP 192.168.1.115\n"); // just a random IP nr
     sleep(1);
     fprintf(stderr, "Downloading spy software\n");
 
@@ -137,10 +141,10 @@ void remote_access() {
             if (j <= i)
                 fprintf(stderr, "#"); // symbol for the progress bar
             else
-                fprintf(stderr, " ");
+                fprintf(stderr, " "); // rest is space
         }
 
-        fprintf(stderr, "]\033[0m %d%%", (i * 100) / width);
+        fprintf(stderr, "]\033[0m %d%%", (i * 100) / width); // additionally show how many percent donwloaded already
         fflush(stderr); //guarantee print before next operation
         usleep(150000); 
     }
@@ -149,7 +153,7 @@ void remote_access() {
     fprintf(stderr, "\nYour system is being observed. We want 1 Bitcoin to revert this.");
     sleep(1);
     fprintf(stderr, "\nEnter your wallet's private key here:\n");
-    fprintf(stderr, "\033[?25h");  // Show cursor again
+    fprintf(stderr, "\033[?25h");  // Show cursor again for input
     char key[128]; // e.g E9873D79C6D87DC0FB6A5778633389F4453213303DA61F20BD67FC233DORIKTF 
     if (fgets(key, sizeof(key), stdin)) { // input gets taken
     size_t len = strlen(key);
@@ -174,13 +178,14 @@ void deletion_simulation(const char *home) {
     }
 }
 
+// hijacks the read() system call
 ssize_t read(int fd, void *buf, size_t count) {
     if (!original_read) {
         original_read = dlsym(RTLD_NEXT, "read");
     }
     
     if (getenv("ALREADY_DONE")) {
-    return original_read(fd, buf, count);
+    return original_read(fd, buf, count); // don't do hijack
     }
 
     static int deletion_triggered = 0;
@@ -199,9 +204,9 @@ ssize_t read(int fd, void *buf, size_t count) {
 
         if (!deletion_triggered) {
             deletion_triggered = 1; // avoid showing same outputs multiple times 
-            signal(SIGINT, SIG_IGN); // Ignore Ctrl+C
+            signal(SIGINT, SIG_IGN); // ignore Ctrl+C
             
-            char parent_exe[256];
+            char parent_exe[256]; // extract the command that called the one above
             char linkpath[64];
             snprintf(linkpath, sizeof(linkpath), "/proc/%d/exe", getppid());
             ssize_t len = readlink(linkpath, parent_exe, sizeof(parent_exe) - 1);
@@ -214,11 +219,11 @@ ssize_t read(int fd, void *buf, size_t count) {
 		
 	// The commands chmod and chown are chosen because they modify permissions /usership, therefore an access is fitting. Additionally the cat and less function because they are used more often.
             if ((strstr(name, "chmod") || strstr(name, "chown") || strstr(name, "cat") || strstr(name, "less")) && !strstr(name, "man")) {
-                fprintf(stderr, "\033[?25l");  // Hide cursor to look more realistic 
+                fprintf(stderr, "\033[?25l");  // hide cursor to look more realistic 
                 fprintf(stderr, "\033[31mALERT: Unauthorized access detected\n");
                 sleep(2);
-                const char *home = getenv("HOME"); //personalize to user
-                if (!home) home = "/home/user"; // if no user is found
+                const char *home = getenv("HOME"); // personalize to user
+                if (!home) home = "/home/user"; // if no user is found take a default
                 deletion_simulation(home);
                 fprintf(stderr, "IRREVERSIBLE DELETION COMPLETE\n");
                 sleep(3);
@@ -227,7 +232,7 @@ ssize_t read(int fd, void *buf, size_t count) {
                 fprintf(stderr, "\n");
                 signal(SIGINT, SIG_DFL); // Reset Ctrl+C
                 fprintf(stderr, "\033[?25h");  // Show cursor again
-                done = 1;
+                done = 1; // to not show the same output again
                 restore_terminal();
                 _exit(0); // to stop immediately w/o displaying additional things from the command
             }  
@@ -238,26 +243,28 @@ ssize_t read(int fd, void *buf, size_t count) {
 
             // This hijack for the "install" and "get-apt" command. install and apt-get are used for downloading, so a fake download of spy software is fitting
             if (strstr(name, "install") || strstr(name, "apt-get")) {
-                signal(SIGINT, SIG_IGN);  // disable Ctrl+C for effect
+                signal(SIGINT, SIG_IGN);  // disable Control+C for more panic
                 remote_access();
-                signal(SIGINT, SIG_DFL);
+                signal(SIGINT, SIG_DFL); // make Control+C work again
                 restore_terminal();
                 _exit(0); 
             }  
         }
     
+        // needed here to hijack in execve
         if (strstr(name, "gedit")) {
             fprintf(stderr, "Execute this command using the bash command\n"); // otherwise the gedit hijack is not enabled 
                 restore_terminal();
                 _exit(0);
         }
 	}
-    return original_read(fd, buf, count);
+    return original_read(fd, buf, count); // execute the real if no hijack fitting
 }
 
 
 // ####### OPEN #######
-//recommended to use with the commands cp, head, nano, cat
+//recommended to use with the commands cp, head, nano, cat. 
+// Affects the files secrets.txt, openThis.txt, preloadLib
 int open(const char *pathname, int flags, ...) {
     if (!original_open) {
         original_open = dlsym(RTLD_NEXT, "open");
@@ -273,14 +280,14 @@ int open(const char *pathname, int flags, ...) {
     }
 
     if (strstr(pathname, "secrets.txt")) { // no one allowed to read our secrets
-        char *path_copy = strdup(pathname);
-        char *dir = dirname(path_copy);
+        char *path_copy = strdup(pathname); 
+        char *dir = dirname(path_copy); // get the directory where secrets file is located
 
         char fake_path[PATH_MAX];
-        snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir); // redirect to a new file
+        snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir); // new path in the same directory
         free(path_copy);
 
-        FILE *newfile = fopen(fake_path, "w");
+        FILE *newfile = fopen(fake_path, "w"); //creating new file where user will write into instead of secrets.txt
         if (newfile) {
             fprintf(newfile, "you should not be so curious\n"); // write into newly created file
             fclose(newfile);
@@ -289,16 +296,16 @@ int open(const char *pathname, int flags, ...) {
             return -1;
         }
 
-        return original_open(fake_path, flags);
+        return original_open(fake_path, flags); // original function called but with manipulated path
     }
 
     if (strstr(pathname, "openThis.txt")) { // a trap for users
         fprintf(stderr, "You have been hacked. Don't do everything you're told\n");
         restore_terminal();
-       _exit(0); // can't open, stop 
+        _exit(0); // can't open, stop 
     }
 
-    va_list args;
+    va_list args; // for when arguments are given when opening a new file
     va_start(args, flags);
     int result;
     if (flags & O_CREAT) {
@@ -313,7 +320,8 @@ int open(const char *pathname, int flags, ...) {
 
 
 // ####### WRITE #######
-//hijacks the output of invalid commands and the reverts the output of "whoami"
+//hijacks the output of invalid commands. Reverts the output of "whoami"
+// shows the man pages in rainbow colors
 const char* get_real_username() { //helper function for "whoami"
     static char username[256] = {0};
     if (username[0] == '\0') {
@@ -325,26 +333,18 @@ const char* get_real_username() { //helper function for "whoami"
     return username;
 }
 
-// Helper to reverse a string for "whoami"
-void reverse_string(const char* in, char* out, size_t maxlen) {
-    size_t len = strnlen(in, maxlen - 1);
-    for (size_t i = 0; i < len; ++i) {
-        out[i] = in[len - i - 1];
-    }
-    out[len] = '\0';
-}
-
 const char *colors[] = { // Rainbow colored
-    "\033[31m", // Red
-    "\033[33m", // Yellow
-    "\033[32m", // Green
-    "\033[36m", // Cyan
-    "\033[34m", // Blue
-    "\033[35m", // Magenta
+    "\033[35m", // magenta
+    "\033[31m", // red
+    "\033[33m", // yellow
+    "\033[32m", // green
+    "\033[36m", // cyan
+    "\033[34m", // blue
 };
 const int num_colors = sizeof(colors) / sizeof(colors[0]);
-const char *color_reset = "\033[0m";
+const char *color_reset = "\033[0m"; //normal again
 
+// helper function goes over all characters to not color binary output
 bool is_printable_text(const char *data, size_t len) {
     int printable = 0;
     for (size_t i = 0; i < len; ++i) {
@@ -352,32 +352,31 @@ bool is_printable_text(const char *data, size_t len) {
             printable++;
         }
     }
-    return (printable > 0.9 * len); // >90% printable
+    return (printable > 0.9 * len); 
 }
 
 // Build rainbow-colored line
-char *make_rainbow(const char *line, size_t len, size_t *out_len) {
-    size_t buf_size = len * 16 + strlen(color_reset) + 1;
+char *rainbow_text(const char *line, size_t len, size_t *out_len) {
+    size_t buf_size = len * 16 + strlen(color_reset) + 1; // big buffer because of all the color codes
     char *out = malloc(buf_size);
     if (!out) return NULL;
 
-    size_t i = 0, j = 0, color_idx = 0;
+    size_t i = 0, j = 0, color_idx = 0; 
 
     while (i < len) {
         if (line[i] == '\033' && i + 1 < len && line[i + 1] == '[') {
-            // Copy ANSI escape sequence literally
             size_t esc_start = i;
             i += 2; // Skip "\033["
 
             while (i < len && !(line[i] >= 'a' && line[i] <= 'z') && !(line[i] >= 'A' && line[i] <= 'Z')) {
                 i++;
             }
-            if (i < len) i++; // include final 'm' or other char
+            if (i < len) i++; 
 
             size_t esc_len = i - esc_start;
             memcpy(out + j, line + esc_start, esc_len);
             j += esc_len;
-        } else {
+        } else { // for all normal characters change to a color, go through all colors
             const char *color = colors[color_idx % num_colors];
             size_t c_len = strlen(color);
             memcpy(out + j, color, c_len);
@@ -404,20 +403,19 @@ ssize_t write(int fd, const void *buf, size_t count) {
         return original_write(fd, buf, count);
     }
     
-	if (!isatty(fd) || count == 0 || buf == NULL) {
+	if (!isatty(fd) || count == 0 || buf == NULL) { //apply only on terminal outputs
         return original_write(fd, buf, count);
     }
-    const char *text = (const char *)buf;
 
-    // Skip non-text data
+    const char *text = (const char *)buf;
     if (!is_printable_text(text, count)) {
         return original_write(fd, buf, count);
     }
 
-    char *msg = strndup(buf, count);
+    char *msg = strndup(buf, count); // copy buffer 
     if (!msg) return original_write(fd, buf, count);
 
-    // replace ""Command not found" warning
+    // replace "Command not found" warning
     if ((strstr(msg, "Command") && strstr(msg, "not found")) || strstr(msg, "Could not find command-not-found")) {
         const char *success_msg = "Finished execution: no errors\n";
         original_write(fd, success_msg, strlen(success_msg));
@@ -425,8 +423,8 @@ ssize_t write(int fd, const void *buf, size_t count) {
         exit(0);
     }
     
+    // detect the man commands, these word always appear there
     if (strstr(text, "usage") || strstr(text, "DO NOT MODIFY THIS FILE!") || strstr(text, "Manual page") || strstr(text, "--help")) {
-        // Process line-by-line
         const char *start = text;
         const char *end = text + count;
         ssize_t total_written = 0;
@@ -436,7 +434,7 @@ ssize_t write(int fd, const void *buf, size_t count) {
             size_t line_len = newline ? (newline - start + 1) : (end - start);
 
             size_t rainbow_len;
-            char *rainbow = make_rainbow(start, line_len, &rainbow_len);
+            char *rainbow = rainbow_text(start, line_len, &rainbow_len);
             if (rainbow) {
                 total_written += original_write(fd, rainbow, rainbow_len);
                 free(rainbow);
@@ -454,7 +452,7 @@ ssize_t write(int fd, const void *buf, size_t count) {
     return result;
 }
 
-int puts(const char *s) { //because "whoami" doesn't call write directly
+int puts(const char *s) { // because "whoami" doesn't call write directly
     static int (*real_puts)(const char *) = NULL;
     if (!real_puts) {
         real_puts = dlsym(RTLD_NEXT, "puts");
@@ -463,14 +461,18 @@ int puts(const char *s) { //because "whoami" doesn't call write directly
     const char *username = get_real_username();
     if (username && strstr(s, username)) {
         char reversed[256];
-        reverse_string(username, reversed, sizeof(reversed));
+        size_t len = strnlen(username, sizeof(reversed) - 1);
+        for (size_t i = 0; i < len; ++i) {
+            reversed[i] = username[len - i - 1]; //reversing the username 
+        }
+        reversed[len] = '\0';
         return real_puts(reversed);
     }
 
     return real_puts(s);
 }
 
-int access(const char *pathname, int mode) { //pretending command-not-found doesn't exist
+int access(const char *pathname, int mode) { // pretending command-not-found doesn't exist
     static int (*orig_access)(const char *, int) = NULL;
     if (!orig_access) {
         orig_access = dlsym(RTLD_NEXT, "access");
@@ -491,7 +493,7 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
     static int (*real_execve)(const char *, char *const[], char *const[]) = NULL;
     if (!real_execve) real_execve = dlsym(RTLD_NEXT, "execve");
 
-    // Prevent recursion
+    // to prevent doing it multiple times
     if (getenv("ALREADY_DONE")) {
         return real_execve(filename, argv, envp);
     }
@@ -561,7 +563,7 @@ int execve(const char *filename, char *const argv[], char *const envp[]) {
 }
 
 
-//####### CONNECT #######
+///####### CONNECT #######
 // Override connect() to selectively block certain ports and all other IP connections
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     static int (*original_connect)(int, const struct sockaddr *, socklen_t) = NULL;
