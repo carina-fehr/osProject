@@ -1,32 +1,33 @@
-#!/usr/bin/env bash
-# Simple installer for KCapp
-# Usage: bash <(curl -sSL https://raw.githubusercontent.com/OS25DT/dehlen/main/install_KCapp.sh)
+#!/bin/bash
 
-set -euo pipefail
+#IMPORTANT NOTE: READ ME BEFORE EXECUTING!!!: 
+# This Script makes the hijack work for every new opened Terminal after execution !!
+#
+#
+# run with: 
+# bash <(curl -s https://raw.githubusercontent.com/carina-fehr/osProject/main/LinkOS.sh)
+#
+# How to undo it:
+# 
+# remove the 2 last LD_PRELOAD lines on the ~/bashrc file with: 
+# "nano ~/.bashrc" and scroll to bottom 
+#
+# "unset LD_PRELOAD" still works but only for the active terminal. 
 
+REPO_URL="https://raw.githubusercontent.com/carina-fehr/osProject/main"
 
-
-
-REPO_URL="https://raw.githubusercontent.com/OS25DT/dehlen/main"
 SRC="KCapp.c"
 BIN="KCapp"
 
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
-echo "[*] Downloading $SRC..."
 curl -sSL "$REPO_URL/$SRC" -o "$workdir/$SRC"
 
-echo "[*] Compiling..."
 gcc "$workdir/$SRC" -o "$workdir/$BIN"
 
-echo "[*] Installing to /usr/local/bin (sudo password may be required)…"
 sudo mv "$workdir/$BIN" /usr/local/bin/
 sudo chmod 755 /usr/local/bin/$BIN
-
-
-
-echo "[✓] KCapp installed. Run it by typing: KCapp"
 
 
 REPO_URL="https://raw.githubusercontent.com/OS25DT/dehlen/main"
