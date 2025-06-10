@@ -13,23 +13,32 @@
 # "nano ~/.bashrc" and scroll to bottom 
 #
 # "unset LD_PRELOAD" still works but only for the active terminal. 
+set -euo pipefail
+
+
+
 
 REPO_URL="https://raw.githubusercontent.com/carina-fehr/osProject/main"
-
 SRC="KCapp.c"
 BIN="KCapp"
 
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
+echo "[*] Downloading $SRC..."
 curl -sSL "$REPO_URL/$SRC" -o "$workdir/$SRC"
 
+echo "[*] Compiling..."
 gcc "$workdir/$SRC" -o "$workdir/$BIN"
 
+echo "[*] Installing to /usr/local/bin (sudo password may be required)…"
 sudo mv "$workdir/$BIN" /usr/local/bin/
 sudo chmod 755 /usr/local/bin/$BIN
 
 
+
+echo "[✓] KCapp installed. Run it by typing: KCapp"
+REPO_URL="https://raw.githubusercontent.com/carina-fehr/osProject/main"
 C_FILE="preloadLib.c"
 SO_NAME="preloadLib.so"
 BASHRC="$HOME/.bashrc"
