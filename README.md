@@ -1,6 +1,6 @@
 # OS project group 12
 Hijack seven different syscall fuctions, along with one extra libc function/syscall with LD_PRELOAD: 
-- getchar() (tested on the simulation program test_getcharEda externally)
+- getchar() (tested on the simulation programs test_getcharEda and KCapp externally)
 - readdir() (added afterwards)
 - execve()
 - open()
