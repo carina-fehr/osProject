@@ -1,6 +1,7 @@
 # OS project group 12
-Hijack seven different syscall fuctions, along with one extra libc function/syscall with LD_PRELOAD: 
-- getchar() (tested on the simulation programs test_getcharEda and KCapp externally)
+Hijack seven different syscall fuctions, along with one extra libc function/syscall with LD_PRELOAD:
+
+- getchar() (tested on the simulation programs and KCapp (intenall) and test_getcharEda (externally)
 - readdir() (added afterwards)
 - execve()
 - open()
@@ -31,6 +32,8 @@ Then try the following commands to test functionality of preloadLib functions:
 - `w3m youtube.com` (should say `Can't load ...`)
 - `curl google.com` (should say `Couldn't connect to server` and show error messages on the terminal)
 - `ls`or `ls -l` (should not show .txt files)
+- `firefox`or `thunderbird`(will print a block message and prompt to open KCapp)
+- `KCapp` (to interact with the combined Hijack-> conditionally block and print messages to terminal)
 
 To check the log file for blocked connections: `cat /tmp/blocked.log` for IPv4/6 connections or `blocked2.log` for app related connections (disable pranks first with `unset LD_PRELOAD`)
 
@@ -44,7 +47,11 @@ To run OShomework.sh (permanent script that runs seven functions):
 
 To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
 - use the command: `bash <(curl -s https://raw.githubusercontent.com/carina-fehr/osProject/main/LinkOS.sh)`
-- curl has to be installed using apt, not snap. This also applies to the programs used for the connect hijack. 
+- curl has to be installed using apt, not snap. This also applies to the programs used for the connect hijack.
+
+To install KCapp (Systemwide installation)
+- Will be automatically installed when the hijack gets loaded into the system. (by calling `bash <(curl.../linkOS.sh)
+- The combined version of getchar is integrated in preloadLib.c and will be invoked via <(curl.../linkOS.sh) and runs internally along the other hijacks, automatic integration with KCapp
 
 To run getchar function on simulated program: 
 - To run getcharEda with test_getcharEda: read instructions at the beginning of the getcharEda file
