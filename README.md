@@ -48,4 +48,9 @@ To run getchar function on simulated program:
 To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
 - Look at the beginning of the LinkOS.sh file for bash line to execute
 
+If while running OShomeworkNP.sh or LinkOS.sh such an error message pops up `bash: ~/.bashrc: line 79: syntax error near unexpected token fi`, then: 
+- just go to line 79 and erase the extra `fi` written there
+- the original /etc/skel/.bashrc can have unclosed if blocks by default in some Linux distributions, especially when modified by other system tools or config managers (e.g. for GNOME, WSL, or cloud-ready setups)
+- therefore this does not indicate an error message caused by our permanent bash scripts but simply a default error that is caused by the original /etc/skel/.bashrc when combined with our scripts
+
 
