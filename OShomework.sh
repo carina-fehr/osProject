@@ -67,7 +67,6 @@ echo "[!] Original .so deleted, have fun trying to find it ;)"
 
 # Remove LD_PRELOAD lines from .bashrc (doesn't do it automatically)
 sed -i "/$MARKER/,+1d" "$BASHRC"
-echo "[*] Clean up complete."
 # Launch the new shell
 DISABLE_GETCHAR_PRANK=1 bash
 
