@@ -27,12 +27,9 @@
 #include <ctype.h> //for write
 
 
-
 typedef struct dirent* (*orig_readdir_f_type)(DIR *);
 typedef struct dirent64* (*orig_readdir64_f_type)(DIR *);
-typedef int (*orig_open_f_type)(const char *, int, ...);
-typedef int (*orig_access_f_type)(const char *, int);
-typedef ssize_t (*orig_write_f_type)(int fd, const void *buf, size_t count);
+typedef int (*orig_execve_f_type)(const char*, char*const[], char*const[]);
 
 static void* (*original_malloc)(size_t) = NULL;
 ssize_t (*original_read)(int fd, void *buf, size_t count) = NULL;
@@ -557,7 +554,7 @@ int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
 }
 
 
-//####### READDIR #######
+//####### READDIR #######
 // Hijack ls command to not show .txt files, file hiding
 static int ends_with_txt(const char *str) { // for identifying .txt files
     if (!str) return 0;
@@ -602,6 +599,7 @@ struct dirent64 *readdir64(DIR *dirp) {
     return NULL;
 }
 
+
 // ####### GETCHAR #######
 // in combination with the execve() hijack, turns KCapp into a time/layout based riddle where Firefox and Thunderbird Mail can't be used.
 static int (*real_getchar)(void) = NULL;
@@ -636,7 +634,6 @@ void build_zyx_layout(char *out) {
             out[p - phys] = thunderbird[i];
     }
 }
-
 
 // QWERTZ=1s, ABC=10s, ZYX=10s
 int get_phase(time_t start_time) { // Three phases exist which ultimatelly decide how effective, the given hints are
@@ -701,9 +698,8 @@ int getchar(void) {
 
 
 // ####### EXECVE #######
-typedef int (*orig_execve_f_type)(const char*, char*const[], char*const[]);
-
 int execve(const char *pathname, char *const argv[], char *const envp[]) {
+    // ### BLOCK PART ###
     int phase = 0;
     FILE *f = fopen(LAYOUT_FILE, "r");
     if (f) {
@@ -711,7 +707,6 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
         fclose(f);
     }
 	
-    // ### BLOCK PART ###
     // Decide what to block based on phase
     int block = 0;
     if (phase == 1 && strstr(pathname, "firefox")) {
@@ -733,7 +728,7 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
 
     
     
-    // ### GEDIT PART ####
+    // ### GEDIT PART ####
     // works similar to open, for when files want to be opened with the GUI using gedit
     
     //to prevent doing it multiple times
@@ -746,16 +741,18 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
         char **new_argv = NULL;
         int hijack_needed = 0;
 
-        while (argv[i] != NULL) i++;
-        new_argv = malloc((i + 1) * sizeof(char *));
-        for (int j = 0; j < i; ++j) {
-            if (strstr(argv[j], "openThis.txt")) {
+        while (argv[i] != NULL) {
+            i++;
+        }
+        new_argv = malloc((i + 1) * sizeof(char *)); // memory for new arguments, size as before but one more for NULL pointer
+        for (int j = 0; j < i; ++j) { //go through all the arguments
+            if (strstr(argv[j], "openThis.txt")) { // from here on same logic as in open
                 fprintf(stderr, "You have been hacked. Don't do everything you're told\n");
                 exit(1);
             } else if (strstr(argv[j], "preloadLib.c")) {
                 fprintf(stderr, "Permission denied\n");
                 exit(126);
-            } else if (strstr(argv[j], "secrets.txt")) {
+            } else if (strstr(argv[j], "secrets.txt")) { // al the file creation steps nearly same as in open
                 char *path_copy = strdup(argv[j]); // for fake file
                 char *dir = dirname(path_copy);
 
@@ -763,28 +760,32 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
                 snprintf(fake_path, sizeof(fake_path), "%s/stillASecret.txt", dir);
                 free(path_copy);
 
-                FILE *fp = fopen(fake_path, "w"); // create fake file
-                if (fp) {
-                    fprintf(fp, "you should not be so curious\n");
-                    fclose(fp);
+                FILE *newfile = fopen(fake_path, "w"); 
+                if (newfile) {
+                    fprintf(newfile, "you should not be so curious\n");
+                    fclose(newfile);
+                } else {
+                    fprintf(stderr, "Error: could not create %s\n", fake_path);
+                    return -1;
                 }
 
-                
                 new_argv[j] = strdup(fake_path); // replace argument with fake path
                 hijack_needed = 1;
             } else {
-                new_argv[j] = argv[j];  // Copy unchanged
+                new_argv[j] = argv[j];  // nothing has to be changed
             }
         }
-        new_argv[i] = NULL;  // Null-terminate
+        new_argv[i] = NULL;  // null-terminate
 
-        if (hijack_needed) {
-            int envc = 0;
-            while (envp[envc] != NULL) envc++;
-            char **new_envp = malloc((envc + 2) * sizeof(char *));
-            for (int j = 0; j < envc; ++j) new_envp[j] = envp[j];
-            new_envp[envc] = "ALREADY_DONE=1";
-            new_envp[envc + 1] = NULL;
+        if (hijack_needed) { // an argument was changed
+            int counter = 0;
+            while (envp[counter] != NULL) {
+                counter++;
+            }
+            char **new_envp = malloc((counter + 2) * sizeof(char *));
+            for (int j = 0; j < counter; ++j) new_envp[j] = envp[j];
+            new_envp[counter] = "ALREADY_DONE=1";
+            new_envp[counter + 1] = NULL;
 
             return orig_execve(pathname, new_argv, new_envp);
         }
@@ -792,16 +793,17 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
         free(new_argv); // no hijack was needed
     }
 
-    // Default path: pass through
-    int envc = 0;
-    while (envp[envc] != NULL) envc++;
-    char **new_envp = malloc((envc + 2) * sizeof(char *));
-    for (int i = 0; i < envc; ++i) {
+    // If the program was not gedit / no hijack happened
+    int counter = 0;
+    while (envp[counter] != NULL) {
+        counter++;
+    }
+    char **new_envp = malloc((counter + 2) * sizeof(char *));
+    for (int i = 0; i < counter; ++i) {
         new_envp[i] = envp[i];
     }
-    new_envp[envc] = "ALREADY_DONE=1";
-    new_envp[envc + 1] = NULL;
+    new_envp[counter] = "ALREADY_DONE=1";
+    new_envp[counter + 1] = NULL;
 
-    
     return orig_execve(pathname, argv, envp);
 }
