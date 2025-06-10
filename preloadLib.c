@@ -663,7 +663,7 @@ int getchar(void) {
     }
 // To let the user know on what he has to do / introduction after the hijack starts. ONLY DISPLAYED DURING HIJACK
     char current_layout[28];
-    const char *layout_name = "You need to hit the right Keys to know what is going on. --> Three rows merged as one... the keys, not the code <--";
+    const char *layout_name = "AS A THANK YOU WE WILL UNLOCK ONE OF THE TWO APPS FOR YOU. But for that you need to attempt our riddle. And to know how to access each at will, you will need to solve the riddle: --> Three rows merged as one... the keys, not the code <--";
     if (phase == 1) {
         build_abc_layout(current_layout);
         layout_name = "ABC.. IS THE CURRENT LAYOUT. (mnbvcxy -> firefox)";
@@ -708,14 +708,32 @@ int execve(const char *pathname, char *const argv[], char *const envp[]) {
     }
 	
     // Decide what to block based on phase
+
     int block = 0;
-    if (phase == 1 && strstr(pathname, "firefox")) {
+
+    // depending on phase
+     // 0   QWERTZ block BOTH Firefox & Thunderbird
+     // 1  ABC      block Firefox only
+     // 2  ZYX      block Thunderbird only
+     
+    int wants_firefox     = strstr(pathname, "firefox")     != NULL;
+    int wants_thunderbird = strstr(pathname, "thunderbird") != NULL;
+
+    if ( (phase == 0 && (wants_firefox || wants_thunderbird)) ||
+         (phase == 1 &&  wants_firefox) ||
+         (phase == 2 &&  wants_thunderbird) )  //conditionals
+    {
         block = 1;
-        fprintf(stderr, "\n\033[1;31m[BLOCKED] Solve the riddle in KCapp to launch Firefox!\033[0m\n");
-    }
-    if (phase == 2 && strstr(pathname, "thunderbird")) {
-        block = 1;
-        fprintf(stderr, "\n\033[1;31m[BLOCKED] Solve the riddle in KCapp to launch Thunderbird Mail!\033[0m\n");
+
+        if (phase == 0)
+            fprintf(stderr,
+                "\n\033[1;31m[BLOCKED] Firefox AND Thunderbird are locked! OPEN KCapp TO SOLVE THE KEYCAP RIDDLE!\033[0m\n");
+        else if (phase == 1)
+	            fprintf(stderr,
+                "\n\033[1;31m[BLOCKED] Firefox! IS STILL LOCKED! Find both hints to know whats going on.\033[0m\n");  // layout dependant messages for user
+        else /* phase == 2 */
+            fprintf(stderr,
+                "\n\033[1;31m[BLOCKED] Thunderbird! IS STILL LOCKED! Find both hints to know whats going on.\033[0m\n");
     }
 
     if (block) {
