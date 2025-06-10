@@ -42,11 +42,12 @@ To run OShomework.sh (permanent script that runs seven functions):
 - IMPORTANT: read the note at the beginning of the file first!
 - then run it like usual with: ./OShomework.sh
 
+To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
+- use the command: `bash <(curl -s https://raw.githubusercontent.com/carina-fehr/osProject/main/LinkOS.sh)`
+- curl has to be installed using apt, not snap. This also applies to the programs used for the connect hijack. 
+
 To run getchar function on simulated program: 
 - To run getcharEda with test_getcharEda: read instructions at the beginning of the getcharEda file
-
-To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
-- Look at the beginning of the LinkOS.sh file for bash line to execute
 
 If while running OShomeworkNP.sh or LinkOS.sh such an error message pops up `bash: ~/.bashrc: line 76: syntax error near unexpected token fi`, then: 
 - just go to line 76 of bashrc with `nano ~/.bashrc` and erase the extra `fi` written there
@@ -54,5 +55,6 @@ If while running OShomeworkNP.sh or LinkOS.sh such an error message pops up `bas
 - when the shell runs normally, syntax errors in .bashrc are often ignored silently, but when `source ~/.bashrc` is inputted in the terminal, it executes the entire file in the current shell, and any syntax error like an extra fi immediately throws an error
 - therefore this does not indicate an error message caused by our permanent bash scripts but simply a default error that is caused by the original /etc/skel/.bashrc when combined with our permanent bash scripts
 - Note: if this error message shows up at initial execution of the permanent bash scripts, then this means that the original bashrc file has the unexpected fi token in it and our permanent scripts source the bashrc implicitly, therefore the extra fi at that line must simply be deleted
+
 
 
