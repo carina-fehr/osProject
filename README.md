@@ -49,8 +49,11 @@ To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
 - Look at the beginning of the LinkOS.sh file for bash line to execute
 
 If while running OShomeworkNP.sh or LinkOS.sh such an error message pops up `bash: ~/.bashrc: line 79: syntax error near unexpected token fi`, then: 
-- just go to line 79 and erase the extra `fi` written there
+- just go to line 79 of bashrc with `nano ~/.bashrc` and erase the extra `fi` written there
 - the original /etc/skel/.bashrc can have unclosed if blocks by default in some Linux distributions, especially when modified by other system tools or config managers (e.g. for GNOME, WSL, or cloud-ready setups)
-- therefore this does not indicate an error message caused by our permanent bash scripts but simply a default error that is caused by the original /etc/skel/.bashrc when combined with our scripts
+- when the shell runs normally, syntax errors in .bashrc are often ignored silently, but when `source ~/.bashrc` is inputted in the terminal, it executes the entire file in the current shell, and any syntax error like an extra fi immediately throws an error
+- therefore this does not indicate an error message caused by our permanent bash scripts but simply a default error that is caused by the original /etc/skel/.bashrc when combined with the input message `source ~/.bashrc` to restore bashrc
+- Note: if this line: `source ~/.bashrc` is never used in combination with copying the original skeleton of bashrc with: `cp /etc/skel/.bashrc ~/`
+to restore the bashrc file, then this error message will not show!
 
 
