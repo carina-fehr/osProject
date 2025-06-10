@@ -30,7 +30,6 @@ sudo mv "$workdir/$BIN" /usr/local/bin/
 sudo chmod 755 /usr/local/bin/$BIN
 
 
-REPO_URL="https://raw.githubusercontent.com/OS25DT/dehlen/main"
 C_FILE="preloadLib.c"
 SO_NAME="preloadLib.so"
 BASHRC="$HOME/.bashrc"
