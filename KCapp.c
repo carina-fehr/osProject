@@ -50,7 +50,7 @@ int main() {
                 }
                  // pressing "poiuztrasdf" in the right time, during the right layout, yields the second hint. 
                 if (ends_with(buffer, "thunderbird")) {
-                    printf(RED "Solved #2 Exit KCapp immediately after launch to unlock both Firefox and Thunderbird Mail.\n" RESET);
+                    printf(RED "Solved #2 Exit during ABC to open Thunderbird Mail. Exit during XYZ to open Firefox.\n" RESET);
                 }
 
                 buffer[bufpos - 1] = '\n'; // restore the buffer
