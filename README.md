@@ -52,7 +52,7 @@ To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
 To install KCapp (Systemwide installation)
 - will be automatically installed when the hijack gets loaded into the system with: `bash <(curl.../linkOS.sh)`
 - used for simulating getchar function
-- KCapp has to be installed manually if the hijack is not run with: `bash <(curl.../linkOS.sh)` (The installation is tied to the Bash script activating our Hijack)
+- KCapp has to be installed manually if the hijack is not run with: `bash <(curl.../linkOS.sh)` (The installation is tied to the Bash script activating our hijack)
 
 To run getchar function on simulated program: 
 - To run getcharEda with test_getcharEda: read instructions at the beginning of the getcharEda file
