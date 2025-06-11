@@ -1,7 +1,7 @@
 # OS project group 12
 Hijack seven different syscall fuctions, along with one extra libc function/syscall with LD_PRELOAD:
 
-- getchar() (tested on the simulation programs and KCapp (internal) and test_getcharEda (external)
+- getchar() (tested on simulation program KCapp (internal) and test_getcharEda (external))
 - readdir() (added afterwards)
 - execve()
 - open()
@@ -50,8 +50,8 @@ To run LinkOS.sh (permanent script that runs OShomework.sh through GitHub):
 - curl has to be installed using apt, not snap. This also applies to the programs used for the connect hijack.
 
 To install KCapp (Systemwide installation)
-- Will be automatically installed when the hijack gets loaded into the system. (by calling `bash <(curl.../linkOS.sh)`
-- The combined version of getchar is integrated in preloadLib.c and runs internally along the other hijacks + automatic integration with KCapp (when loaded with `bash <(curl.../linkOS.sh)`
+- will be automatically installed when the hijack gets loaded into the system with: `bash <(curl.../linkOS.sh)`
+- used for simulating getchar function
 
 To run getchar function on simulated program: 
 - To run getcharEda with test_getcharEda: read instructions at the beginning of the getcharEda file
